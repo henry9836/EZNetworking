@@ -16,23 +16,11 @@ public class NetworkTest : MonoBehaviour
     private IPEndPoint listenPoint;
     private UdpClient server;
 
-
-    void Update()
-    {
-        if (serverMode) {
-            byte[] dataIn = server.Receive(ref listenPoint);
-            Debug.Log("Server Received: " +  Encoding.ASCII.GetString(dataIn));
-        }
-    }
-
     public void StartServer()
     {
         Debug.Log("Server Mode");
 
-        server = new UdpClient(port);
-        listenPoint = new IPEndPoint(IPAddress.Any, port);
-
-        serverMode = true;
+        StartCoroutine(ServerLoop());
 
     }
 
@@ -62,4 +50,23 @@ public class NetworkTest : MonoBehaviour
 
     }
 
+    IEnumerator ServerLoop()
+    {
+
+        server = new UdpClient(port);
+        listenPoint = new IPEndPoint(IPAddress.Any, port);
+
+        serverMode = true;
+
+        while (true)
+        {
+            byte[] dataIn = server.Receive(ref listenPoint);
+            Debug.Log("Server Received: " + Encoding.ASCII.GetString(dataIn));
+            //string dataIn = "Placeholder";
+            //Debug.Log("Server Received: " + dataIn);
+            yield return null;
+        }
+
+        yield return null;
+    }
 }

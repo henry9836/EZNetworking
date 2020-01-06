@@ -346,6 +346,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a9c0e5e242230b8498e807fc361a9697, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  port: 13371
+  targetIP: 127.0.0.1
 --- !u!1 &843239801
 GameObject:
   m_ObjectHideFlags: 0
