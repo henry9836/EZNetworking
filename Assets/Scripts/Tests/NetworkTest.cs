@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System;
+using System.Threading;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -20,7 +21,7 @@ public class NetworkTest : MonoBehaviour
     {
         Debug.Log("Server Mode");
 
-        StartCoroutine(ServerLoop());
+        ThreadPool.QueueUserWorkItem(ServerLoop);
 
     }
 
@@ -50,7 +51,7 @@ public class NetworkTest : MonoBehaviour
 
     }
 
-    IEnumerator ServerLoop()
+    private void ServerLoop(object state)
     {
 
         server = new UdpClient(port);
@@ -62,11 +63,6 @@ public class NetworkTest : MonoBehaviour
         {
             byte[] dataIn = server.Receive(ref listenPoint);
             Debug.Log("Server Received: " + Encoding.ASCII.GetString(dataIn));
-            //string dataIn = "Placeholder";
-            //Debug.Log("Server Received: " + dataIn);
-            yield return null;
         }
-
-        yield return null;
     }
 }
