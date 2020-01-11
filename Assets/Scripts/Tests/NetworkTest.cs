@@ -19,7 +19,7 @@ public class NetworkTest : MonoBehaviour
 
     public void StartServer()
     {
-        Debug.Log("Server Mode");
+        Debug.LogError("Server Mode");
 
         ThreadPool.QueueUserWorkItem(ServerLoop);
 
@@ -27,17 +27,17 @@ public class NetworkTest : MonoBehaviour
 
     public void StartClient()
     {
-        Debug.Log("Client Mode");
+        Debug.LogError("Client Mode");
 
         var client = new UdpClient();
 
         IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Parse(targetIP), port);
 
 
-        Debug.Log("Connecting To: " + targetIP);
+        Debug.LogError("Connecting To: " + targetIP);
         client.Connect(ipEndPoint);
-        Debug.Log("Connected!");
-        Debug.Log("Sending Messages...");
+        Debug.LogError("Connected!");
+        Debug.LogError("Sending Messages...");
 
         const string one = "Hello This is a UDP Connection Test!\n";
         const string two = "yay :D\n";
@@ -47,7 +47,7 @@ public class NetworkTest : MonoBehaviour
         client.Send(Encoding.ASCII.GetBytes(two), two.Length);
         client.Send(Encoding.ASCII.GetBytes(three), three.Length);
 
-        Debug.Log("Done.");
+        Debug.LogError("Done.");
 
     }
 
@@ -62,7 +62,7 @@ public class NetworkTest : MonoBehaviour
         while (true)
         {
             byte[] dataIn = server.Receive(ref listenPoint);
-            Debug.Log("Server Received: " + Encoding.ASCII.GetString(dataIn));
+            Debug.LogError("Server Received: " + Encoding.ASCII.GetString(dataIn));
         }
     }
 }

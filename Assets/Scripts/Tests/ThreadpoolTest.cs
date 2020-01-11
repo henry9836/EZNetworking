@@ -14,7 +14,7 @@ public class ThreadpoolTest : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("TP Test Start");
+        Debug.LogError("TP Test Start");
 
         speedOfThreadSpawn = 5.0f - speedOfThreadSpawn;
 
@@ -26,15 +26,15 @@ public class ThreadpoolTest : MonoBehaviour
 
     private void ThreadTest(object state)
     {
-        Debug.Log("Hello From The Threadpool!");
+        Debug.LogError("Hello From The Threadpool!");
 
-        Debug.Log("I am thinking for a bit...");
+        Debug.LogError("I am thinking for a bit...");
 
         System.Random rand = new System.Random();
 
         Thread.Sleep(rand.Next(500, 10000));
 
-        Debug.Log("Done.");
+        Debug.LogError("Done.");
 
     }
 
@@ -47,7 +47,7 @@ public class ThreadpoolTest : MonoBehaviour
             yield return null;
         }
 
-        Debug.Log("Stopped Adding Jobs To Pool");
+        Debug.LogError("Stopped Adding Jobs To Pool");
 
         yield return null;
     }
