@@ -10,13 +10,71 @@ using UnityEngine;
 public class NetworkTest : MonoBehaviour
 {
 
+    //Publics
+    [Range(1, 10)]
+    public int reapeatSendCount = 3;
+    [Range(1, 10)]
+    public int maxRetryCount = 5;
+    [Range(5, 15)]
+    public int timeoutThreshold = 5;
     public int port = 13371;
     public string targetIP = "127.0.0.1";
 
+    //Privates
     private bool serverMode = false;
     private IPEndPoint listenPoint;
-    private UdpClient server;
+    private UdpClient network;
+    private bool timeOutHandShake = false;
+   
+    
+    //Sends a packet
+    public void Send(Atlas.PACKETTYPE type, byte[] data)
+    {
+        if (data.Length <= 0)
+        {
+            Debug.LogWarning("A null packet was called to send, ignoring...");
+            return;
+        }
 
+        //Insert type infront of data
+        byte[] header = Encoding.ASCII.GetBytes(":::" + ((int)type) + ":::");
+        byte[] packet = new byte[header.Length + data.Length];
+     
+        header.CopyTo(packet, 0);
+        data.CopyTo(packet, header.Length);
+
+        Debug.Log("Pack: " + Encoding.ASCII.GetString(packet));
+
+        network.Send(packet, packet.Length);
+    }
+
+    //Sends a packet multiple times
+    public void SafeSend(Atlas.PACKETTYPE type, byte[] data)
+    {
+        if (data.Length <= 0)
+        {
+            Debug.LogWarning("A null packet was called to send, ignoring...");
+            return;
+        }
+
+        for (int i = 0; i < reapeatSendCount; i++)
+        {
+            //Insert type infront of data
+            byte[] header = Encoding.ASCII.GetBytes(((int)type) + "::%%::");
+            byte[] packet = new byte[header.Length + data.Length];
+            header.CopyTo(packet, 0);
+            data.CopyTo(packet, 0);
+
+            network.Send(packet, packet.Length);
+        }
+    }
+
+    public void Start()
+    {
+        timeoutThreshold *= 1000; //convert from seconds to milliseconds
+    }
+
+    //Initializers
     public void StartServer()
     {
         Debug.LogError("Server Mode");
@@ -29,39 +87,93 @@ public class NetworkTest : MonoBehaviour
     {
         Debug.LogError("Client Mode");
 
-        var client = new UdpClient();
+        ThreadPool.QueueUserWorkItem(ClientLoop);
+
+    }
+
+    //Timeout Thread
+    private void TimeoutThread()
+    {
+        Debug.Log("Timeout Thread Started");
+        Thread.Sleep(timeoutThreshold);
+        timeOutHandShake = true;
+        return;
+    }
+
+    //Handshake for Client
+    void ClientHandShake()
+    {
+        for (int i = 0; i < maxRetryCount; i++)
+        {
+            Debug.Log("Attempting Handshake. Attempt: " + i.ToString());
+           
+            //Setup Timeout
+
+            timeOutHandShake = false;
+            Thread timeoutThread = new Thread(TimeoutThread);
+            timeoutThread.Start();
+
+            //Hello Server?
+            Send(Atlas.PACKETTYPE.HANDSHAKEACKREQ, Encoding.ASCII.GetBytes("hello"));
+
+            //Request Game Infomation From Server
+
+
+            Thread.Sleep(timeoutThreshold + (3 - i));
+
+            //Handshake has not reached timeout
+            if (!timeOutHandShake)
+            {
+                Debug.Log("Handshake Completed");
+                return;
+            }
+            
+        }
+
+        Debug.LogError("Could Not Complete Handshake");
+    }
+
+    //Client Loop
+    private void ClientLoop(object state)
+    {
+
+        network = new UdpClient();
 
         IPEndPoint ipEndPoint = new IPEndPoint(IPAddress.Parse(targetIP), port);
 
 
         Debug.LogError("Connecting To: " + targetIP);
-        client.Connect(ipEndPoint);
+        network.Connect(ipEndPoint);
         Debug.LogError("Connected!");
-        Debug.LogError("Sending Messages...");
 
-        const string one = "Hello This is a UDP Connection Test!\n";
-        const string two = "yay :D\n";
-        const string three = "goodbye\n";
+        ClientHandShake();
 
-        client.Send(Encoding.ASCII.GetBytes(one), one.Length);
-        client.Send(Encoding.ASCII.GetBytes(two), two.Length);
-        client.Send(Encoding.ASCII.GetBytes(three), three.Length);
+        //const string safe = "Safe Send Test!\n";
+        //while (true)
+        //{
+        //    Debug.LogError("Sending Messages...");
+        //    SafeSend(Atlas.PACKETTYPE.UNASSIGNED, Encoding.ASCII.GetBytes(safe), safe.Length);
+        //    Debug.LogError("Done.");
+        //    Thread.Sleep(1000);
+        //}
 
-        Debug.LogError("Done.");
+
+
 
     }
 
+    //Server Loop
     private void ServerLoop(object state)
     {
 
-        server = new UdpClient(port);
+        network = new UdpClient(port);
         listenPoint = new IPEndPoint(IPAddress.Any, port);
 
         serverMode = true;
 
         while (true)
         {
-            byte[] dataIn = server.Receive(ref listenPoint);
+            byte[] dataIn = network.Receive(ref listenPoint);
             Debug.LogError("Server Received: " + Encoding.ASCII.GetString(dataIn));
         }
     }
