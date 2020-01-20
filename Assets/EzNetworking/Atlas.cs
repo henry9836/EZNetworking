@@ -4,6 +4,7 @@ using UnityEngine;
 
 public static class Atlas
 {
+
     public enum PACKETTYPE
     {
         UNASSIGNED,
@@ -16,5 +17,15 @@ public static class Atlas
         OBJECTSTATE,
         FINALACK,
         DISCONNECT,
+        BASIC,
+        TRANSFORM,
+        RIGIDBODY,
+    };
+
+    public enum NETWORKOBJTYPE
+    {
+        BASIC,
+        TRANSFORM,
+        RIGIDBODY,
     };
 }

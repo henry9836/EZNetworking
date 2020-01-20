@@ -133,6 +133,7 @@ GameObject:
   - component: {fileID: 58517346}
   - component: {fileID: 58517345}
   - component: {fileID: 58517344}
+  - component: {fileID: 58517349}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -227,6 +228,21 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 7
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &58517349
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 58517343}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8434ac5c7223f3245939db209c980efa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sendDelay: 3
+  type: 1
+  safeSend: 0
 --- !u!1 &572232472
 GameObject:
   m_ObjectHideFlags: 0
@@ -410,18 +426,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &828660880 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 9094629802484809588, guid: e53c2265b0ce9944bb6ece0734f277ae,
-    type: 3}
-  m_PrefabInstance: {fileID: 9094629801694454756}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a9c0e5e242230b8498e807fc361a9697, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &843239801
 GameObject:
   m_ObjectHideFlags: 0
@@ -647,7 +651,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 828660880}
+      - m_Target: {fileID: 9094629801694454758}
         m_MethodName: StartClient
         m_Mode: 1
         m_Arguments:
@@ -1166,7 +1170,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 828660880}
+      - m_Target: {fileID: 9094629801694454758}
         m_MethodName: StartServer
         m_Mode: 1
         m_Arguments:
@@ -1357,10 +1361,17 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 9094629802484809588, guid: e53c2265b0ce9944bb6ece0734f277ae,
-        type: 3}
-      propertyPath: targetIP
-      value: 127.0.0.1
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e53c2265b0ce9944bb6ece0734f277ae, type: 3}
+--- !u!114 &9094629801694454758 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 9094629801694454758, guid: e53c2265b0ce9944bb6ece0734f277ae,
+    type: 3}
+  m_PrefabInstance: {fileID: 9094629801694454756}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7e0e66e4d3de9804a93c4fae125b65ac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
