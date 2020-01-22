@@ -19,12 +19,19 @@ public class EZNetworking : MonoBehaviour
     public int port = 13371;
     public string targetIP = "127.0.0.1";
 
+    private List<Atlas.ClientObject> clients = new List<Atlas.ClientObject>();
+
     //Privates
     private IPEndPoint listenPoint;
     private UdpClient network;
     private bool timeOutHandShake = false;
     private int NextID = 1;
-    private List<Atlas.ClientObject> clients;
+
+    //Assign Target IP
+    public void AssignIP(string newIP)
+    {
+        targetIP = newIP;
+    }
 
     //Return A Valid Network ID
     public int AssignID()
@@ -50,7 +57,7 @@ public class EZNetworking : MonoBehaviour
         header.CopyTo(packet, 0);
         data.CopyTo(packet, header.Length);
 
-        Debug.Log("Pack: " + Encoding.ASCII.GetString(packet));
+        //Debug.Log("Pack: " + Encoding.ASCII.GetString(packet));
 
         network.Send(packet, packet.Length);
     }
@@ -86,7 +93,7 @@ public class EZNetworking : MonoBehaviour
     {
         Debug.LogError("Server Mode");
 
-        Thread mainServerThread = new Thread(ServerLoop);
+        Thread mainServerThread = new Thread(ServerThread);
 
         mainServerThread.Start();
 
@@ -144,15 +151,50 @@ public class EZNetworking : MonoBehaviour
         Debug.LogError("Could Not Complete Handshake");
     }
 
-    //Recieve Threads
+    //Server Process Incoming Data
+    private void serverReceiveThread(object state)
+    {
+        Atlas.ClientObject client = state as Atlas.ClientObject;
+        byte[] data = client.lastMessage;
+        //Have we seen this client before?
+        bool unknownClient = true;
+        for (int i = 0; i < clients.Count; i++)
+        {
+            //We know this client ip
+            if (clients[i].clientEP.Address.AddressFamily.ToString() == client.clientEP.Address.AddressFamily.ToString())
+            {
+                unknownClient = false;
+            }
+        }
+        //Add client if we do not know it
+        if (unknownClient)
+        {
+            client.authState = Atlas.ClientObject.AUTHTYPE.NOHANDSHAKE;
+            clients.Add(client);
+            Debug.Log("New Client Found!");
+        }
 
-    private void serverReieveThread(object state)
+        //Heartbeat
+        client.resetHeart();
+
+        //Process Data
+        Debug.LogError("Server Received: " + Encoding.ASCII.GetString(data));
+        const string safe = "Server Send Test!\n";
+        network.Send(Encoding.ASCII.GetBytes(safe), safe.Length, client.clientEP); // if data is received reply letting the client know that we got his data         
+    }
+
+    //High Priority Server Loop
+    private void serverMainReceiveThread(object state)
     {
         while (Atlas.networkActive)
         {
-            byte[] dataIn = network.Receive(ref listenPoint);
-            Debug.LogError("Server Received: " + Encoding.ASCII.GetString(dataIn));
-            network.Send(new byte[] { 1 }, 1, listenPoint); // if data is received reply letting the client know that we got his data          
+            //Recieve data
+            byte[] data = network.Receive(ref listenPoint);
+
+            //Build a temporary client object and send it to the threadpool for processing
+            Atlas.ClientObject tmp = new Atlas.ClientObject(listenPoint, data);
+            ThreadPool.QueueUserWorkItem(serverReceiveThread, tmp);
+
         }
     }
 
@@ -165,7 +207,7 @@ public class EZNetworking : MonoBehaviour
         }
     }
 
-        //Client Loop
+    //Client Loop
     private void ClientLoop(object state)
     {
 
@@ -197,8 +239,8 @@ public class EZNetworking : MonoBehaviour
 
     }
 
-    //Server Loop
-    private void ServerLoop(object state)
+    //Server Boot Thread
+    private void ServerThread(object state)
     {
 
         Atlas.networkActive = true;
@@ -212,14 +254,7 @@ public class EZNetworking : MonoBehaviour
         Atlas.isClient = false;
 
         //Start Client Receive Thread
-        Thread serverR = new Thread(serverReieveThread);
+        Thread serverR = new Thread(serverMainReceiveThread);
         serverR.Start();
-
-        //const string safe = "Server Send Test!\n";
-        //while (Atlas.networkActive)
-        //{
-        //    Send(Atlas.PACKETTYPE.UNASSIGNED, Encoding.ASCII.GetBytes(safe));
-        //    Thread.Sleep(1000);
-        //}
     }
 }

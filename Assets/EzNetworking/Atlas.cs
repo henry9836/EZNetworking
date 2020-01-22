@@ -37,9 +37,18 @@ public static class Atlas
 
     public class ClientObject
     {
-
-        ClientObject()
+        
+        public enum AUTHTYPE
         {
+            NOHANDSHAKE,
+            HANDSHAKE_SUCCEED,
+            HANDSHAKE_FAIL,
+        };
+
+        public ClientObject(IPEndPoint _clientEP, byte[] _lastMessage)
+        {
+            lastMessage = _lastMessage;
+            clientEP = _clientEP;
             lastHeartbeat = 0.0f;
         }
 
@@ -48,9 +57,15 @@ public static class Atlas
              lastHeartbeat += Time.deltaTime;
         }
 
+        public void resetHeart()
+        {
+            lastHeartbeat = 0.0f;
+        }
 
-
-        float lastHeartbeat = 0.0f;
+        public AUTHTYPE authState;
+        public byte[] lastMessage;
+        public IPEndPoint clientEP;
+        public float lastHeartbeat = 0.0f;
     };
 
 }
