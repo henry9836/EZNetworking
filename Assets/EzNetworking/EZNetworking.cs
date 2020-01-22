@@ -160,8 +160,9 @@ public class EZNetworking : MonoBehaviour
         bool unknownClient = true;
         for (int i = 0; i < clients.Count; i++)
         {
+            Debug.Log("Comparing: " + clients[i].clientEP.Address.ToString() + " to: " + client.clientEP.Address.ToString());
             //We know this client ip
-            if (clients[i].clientEP.Address.AddressFamily.ToString() == client.clientEP.Address.AddressFamily.ToString())
+            if (clients[i].clientEP.Address.ToString() == client.clientEP.Address.ToString())
             {
                 unknownClient = false;
             }
@@ -189,6 +190,7 @@ public class EZNetworking : MonoBehaviour
         while (Atlas.networkActive)
         {
             //Recieve data
+            listenPoint = new IPEndPoint(IPAddress.Any, port);
             byte[] data = network.Receive(ref listenPoint);
 
             //Build a temporary client object and send it to the threadpool for processing
@@ -247,7 +249,7 @@ public class EZNetworking : MonoBehaviour
 
         //Attempt to listen on port on all addresses
         network = new UdpClient(port);
-        listenPoint = new IPEndPoint(IPAddress.Any, port);
+        
 
         //Update Atlas State
         Atlas.isServer = true;

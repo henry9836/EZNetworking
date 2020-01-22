@@ -455,9 +455,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 9094629801694454758}
-        m_MethodName: AssignIP
-        m_Mode: 5
+      - m_Target: {fileID: 486573784}
+        m_MethodName: PassOn
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
