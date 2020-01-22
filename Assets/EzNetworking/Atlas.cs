@@ -1,9 +1,15 @@
-﻿using System.Collections;
+﻿using System.Net;
+using System.Net.Sockets;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public static class Atlas
 {
+
+    public static bool isServer = false;
+    public static bool isClient = false;
+    public static bool networkActive = false;
 
     public enum PACKETTYPE
     {
@@ -28,4 +34,23 @@ public static class Atlas
         TRANSFORM,
         RIGIDBODY,
     };
+
+    public class ClientObject
+    {
+
+        ClientObject()
+        {
+            lastHeartbeat = 0.0f;
+        }
+
+        //Helps identify a timeout
+        public void life(){
+             lastHeartbeat += Time.deltaTime;
+        }
+
+
+
+        float lastHeartbeat = 0.0f;
+    };
+
 }

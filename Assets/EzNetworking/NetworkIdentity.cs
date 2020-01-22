@@ -67,9 +67,10 @@ public class NetworkIdentity : MonoBehaviour
     //Update Loop Tied to Our Fixed Update Info
     void FixedUpdate()
     {
+        //Sanity Checks
         if (networkController != null)
         {
-            if (networkController.networkActive)
+            if (Atlas.networkActive)
             {
                 if (ID != -1)
                 {
