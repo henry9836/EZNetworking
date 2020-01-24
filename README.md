@@ -8,4 +8,4 @@ To make a framework that can be intergrated with projects easily and work on mul
 
 ### What the Project Can Currently Do
 - Performs A Handshake
-- Send/Recieve messages between linux and windows
+- Send/Receive messages between linux and windows
