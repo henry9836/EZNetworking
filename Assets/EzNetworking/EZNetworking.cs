@@ -26,6 +26,13 @@ public class EZNetworking : MonoBehaviour
     private UdpClient network;
     private bool timeOutHandShake = false;
     private int NextID = 1;
+    private bool clientHasGotACK = false;
+
+    //Const
+    private const string idSeperator = "::";
+    private const string ACK = "ACK";
+    
+
 
     //Assign Target IP
     public void AssignIP(string newIP)
@@ -42,7 +49,7 @@ public class EZNetworking : MonoBehaviour
     }
 
     //Sends a packet
-    public void Send(Atlas.PACKETTYPE type, byte[] data)
+    public void Send(Atlas.PACKETTYPE type, byte[] data, IPEndPoint ep)
     {
         if (data.Length <= 0)
         {
@@ -51,19 +58,32 @@ public class EZNetworking : MonoBehaviour
         }
 
         //Insert type infront of data
-        byte[] header = Encoding.ASCII.GetBytes(".:" + ((int)type) + ":.");
+        byte[] header = Encoding.ASCII.GetBytes(((int)type) + idSeperator);
         byte[] packet = new byte[header.Length + data.Length];
 
         header.CopyTo(packet, 0);
         data.CopyTo(packet, header.Length);
 
-        //Debug.Log("Pack: " + Encoding.ASCII.GetString(packet));
-
-        network.Send(packet, packet.Length);
+        if (Atlas.isServer && Atlas.isClient)
+        {
+            Debug.LogWarning("Cannot determine if Atlas mode is Server or Client as both are True");
+        }
+        else if (Atlas.isClient)
+        {
+            network.Send(packet, packet.Length);
+        }
+        else if (Atlas.isServer)
+        {
+            network.Send(packet, packet.Length, ep);
+        }
+        else
+        {
+            Debug.LogWarning("Atlas doesn't have a mode selected");
+        }
     }
 
     //Sends a packet multiple times
-    public void SafeSend(Atlas.PACKETTYPE type, byte[] data)
+    public void SafeSend(Atlas.PACKETTYPE type, byte[] data, IPEndPoint ep)
     {
         if (data.Length <= 0)
         {
@@ -74,12 +94,27 @@ public class EZNetworking : MonoBehaviour
         for (int i = 0; i < reapeatSendCount; i++)
         {
             //Insert type infront of data
-            byte[] header = Encoding.ASCII.GetBytes(".:" + ((int)type) + ":.");
+            byte[] header = Encoding.ASCII.GetBytes(((int)type) + idSeperator);
             byte[] packet = new byte[header.Length + data.Length];
             header.CopyTo(packet, 0);
             data.CopyTo(packet, header.Length);
 
-            network.Send(packet, packet.Length);
+            if (Atlas.isServer && Atlas.isClient)
+            {
+                Debug.LogWarning("Cannot determine if Atlas mode is Server or Client as both are True");
+            }
+            else if (Atlas.isClient)
+            {
+                network.Send(packet, packet.Length);
+            }
+            else if (Atlas.isServer)
+            {
+                network.Send(packet, packet.Length, ep);
+            }
+            else
+            {
+                Debug.LogWarning("Atlas doesn't have a mode selected");
+            }
         }
     }
 
@@ -132,18 +167,27 @@ public class EZNetworking : MonoBehaviour
             timeoutThread.Start();
 
             //Hello Server?
-            Send(Atlas.PACKETTYPE.HANDSHAKEACKREQ, Encoding.ASCII.GetBytes("hello"));
+            Send(Atlas.PACKETTYPE.HANDSHAKEACKREQ, Encoding.ASCII.GetBytes("Hello Server!"), listenPoint);
 
-            //Request Game Infomation From Server
-
-
-            Thread.Sleep(timeoutThreshold + (3 - i));
+            //Server Reply
+            while (!clientHasGotACK && !timeOutHandShake)
+            {
+                //Wait for either the timeout or a ACK packet
+            }
 
             //Handshake has not reached timeout
             if (!timeOutHandShake)
             {
                 Debug.Log("Handshake Completed");
+
+                //Request Game Infomation From Server
+                SafeSend(Atlas.PACKETTYPE.REQALLGAMEINFO, Encoding.ASCII.GetBytes("SENDGAMEINFO"), listenPoint);
+
                 return;
+            }
+            else
+            {
+                Debug.Log("Handshake Failed Retrying...");
             }
 
         }
@@ -178,14 +222,86 @@ public class EZNetworking : MonoBehaviour
         //Heartbeat
         client.resetHeart();
 
-        //Process Data
-        Debug.LogError("Server Received: " + Encoding.ASCII.GetString(data));
-        const string safe = "Server Send Test!\n";
-        network.Send(Encoding.ASCII.GetBytes(safe), safe.Length, client.clientEP); // if data is received reply letting the client know that we got his data         
+        //Decode Data Type
+        string dataStr = Encoding.ASCII.GetString(data);
+        Debug.LogError("Server Received: " + dataStr);
+
+        int cutPosition = dataStr.IndexOf(idSeperator);
+
+        if (cutPosition != -1)
+        {
+            int type = int.Parse(dataStr.Substring(0, cutPosition));
+            string infoStr = dataStr.Substring(cutPosition+idSeperator.Length);
+
+            Debug.Log("Infomation: type{" + type.ToString() +"} infomation: " + infoStr);
+
+            switch (type)
+            {
+                case (int)Atlas.PACKETTYPE.HANDSHAKEACKREQ:
+                    {
+                        //Send back a ACK
+                        SafeSend(Atlas.PACKETTYPE.ACK, Encoding.ASCII.GetBytes(ACK), client.clientEP);
+                        break;
+                    }
+
+                default:
+                    {
+                        Debug.LogWarning("Packet has unknown type {" + type.ToString() + "}, ignoring...");
+                        break;
+                    }
+            }
+
+        }
+        else
+        {
+            Debug.LogWarning("Received a packet without a type, ignoring...");
+        }
+               
     }
 
-    //High Priority Server Loop
-    private void serverMainReceiveThread(object state)
+    //Client Process Incoming Data
+    private void clientReceiveThread(object state)
+    {
+        byte[] data = state as byte[];
+
+        //Decode Data Type
+        string dataStr = Encoding.ASCII.GetString(data);
+        Debug.LogError("Client Received: " + dataStr);
+
+        int cutPosition = dataStr.IndexOf(idSeperator);
+
+        if (cutPosition != -1)
+        {
+            int type = int.Parse(dataStr.Substring(0, cutPosition));
+            string infoStr = dataStr.Substring(cutPosition + idSeperator.Length);
+
+            Debug.Log("Packet: type{" + type.ToString() + "} infomation: " + infoStr);
+
+            switch (type)
+            {
+                case (int)Atlas.PACKETTYPE.ACK:
+                    {
+                        //Server has send a ACK
+                        clientHasGotACK = true;
+                        break;
+                    }
+
+                default:
+                    {
+                        Debug.LogWarning("Packet has unknown type {" + type.ToString() + "}, ignoring...");
+                        break;
+                    }
+            }
+
+        }
+        else
+        {
+            Debug.LogWarning("Received a packet without a type, ignoring...");
+        }
+    }
+
+        //High Priority Server Loop
+        private void serverMainReceiveThread(object state)
     {
         while (Atlas.networkActive)
         {
@@ -200,60 +316,61 @@ public class EZNetworking : MonoBehaviour
         }
     }
 
-    private void clientReieveThread(object state)
+    private void clientMainReieveThread(object state)
     {
         while (Atlas.networkActive)
         {
             byte[] dataIn = network.Receive(ref listenPoint);
-            Debug.LogError("Client Received: " + Encoding.ASCII.GetString(dataIn));
+
+            //Process Data
+            ThreadPool.QueueUserWorkItem(clientReceiveThread, dataIn);
         }
     }
 
     //Client Loop
     private void ClientLoop(object state)
     {
-
+        //Update Atlas State
         Atlas.networkActive = true;
+        Atlas.isServer = false;
+        Atlas.isClient = true;
+        clientHasGotACK = false;
 
         //Connect to Server
         network = new UdpClient();
         listenPoint = new IPEndPoint(IPAddress.Parse(targetIP), port);
         Debug.LogError("Connecting To: " + targetIP);
         network.Connect(listenPoint);
-        Debug.LogError("Connected!");
 
         //Start Client Receive Thread
-        Thread clientR = new Thread(clientReieveThread);
+        Thread clientR = new Thread(clientMainReieveThread);
         clientR.Start();
 
         //Attempt Handshake
         ClientHandShake();
 
-        Atlas.isServer = false;
-        Atlas.isClient = true;
-
-        const string safe = "Client Send Test!\n";
-        while (Atlas.networkActive)
-        {
-            Send(Atlas.PACKETTYPE.UNASSIGNED, Encoding.ASCII.GetBytes(safe));
-            Thread.Sleep(1000);
-        }
+        //const string safe = "Client Send Test!\n";
+        //while (Atlas.networkActive)
+        //{
+        //    Send(Atlas.PACKETTYPE.UNASSIGNED, Encoding.ASCII.GetBytes(safe), listenPoint);
+        //    Thread.Sleep(1000);
+        //}
 
     }
 
     //Server Boot Thread
     private void ServerThread(object state)
     {
-
+        //Update Atlas State
         Atlas.networkActive = true;
+        Atlas.isServer = true;
+        Atlas.isClient = false;
 
         //Attempt to listen on port on all addresses
         network = new UdpClient(port);
         
 
-        //Update Atlas State
-        Atlas.isServer = true;
-        Atlas.isClient = false;
+
 
         //Start Client Receive Thread
         Thread serverR = new Thread(serverMainReceiveThread);

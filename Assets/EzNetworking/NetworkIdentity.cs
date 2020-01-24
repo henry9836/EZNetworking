@@ -33,10 +33,10 @@ public class NetworkIdentity : MonoBehaviour
         //Send infomation
         if (safeSend)
         {
-            networkController.SafeSend(Atlas.PACKETTYPE.TRANSFORM, networkData);
+            //networkController.SafeSend(Atlas.PACKETTYPE.TRANSFORM, networkData);
         }
         else {
-            networkController.Send(Atlas.PACKETTYPE.TRANSFORM, networkData);
+            //networkController.Send(Atlas.PACKETTYPE.TRANSFORM, networkData);
         }
     }
 

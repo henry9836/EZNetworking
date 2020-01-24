@@ -15,13 +15,11 @@ public static class Atlas
     {
         UNASSIGNED,
         HANDSHAKEACKREQ,
-        HANDSHAKEACK,
         ACK,
         REQALLGAMEINFO,
         REQOBJECTSTATE,
         WORLDINFO,
         OBJECTSTATE,
-        FINALACK,
         DISCONNECT,
         BASIC,
         TRANSFORM,
