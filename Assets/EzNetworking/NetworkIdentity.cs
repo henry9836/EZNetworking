@@ -11,11 +11,19 @@ public class NetworkIdentity : MonoBehaviour
     public float sendDelay = 0.2f;
     public Atlas.NETWORKOBJTYPE type;
     public bool safeSend = false;
+    public bool serverOnlyObject = false;
+    public bool localPlayerAuthority = false;
+    public int ObjectID = -1;
 
     private EZNetworking networkController;
     private float networkUpdateRate;
     private float currentTime = 0.0f;
-    private int ID = -1;
+    
+
+    public void updateID(int newID)
+    {
+        ObjectID = newID;
+    }
 
     void BasicLogic()
     {
@@ -25,7 +33,7 @@ public class NetworkIdentity : MonoBehaviour
     void TransformLogic()
     {
         //Get infomation
-        string data = transform.position.ToString();
+        string data = ObjectID.ToString() + "$" + transform.position.ToString();
 
         //Encode for network
         byte[] networkData = Encoding.ASCII.GetBytes(data);
@@ -47,16 +55,18 @@ public class NetworkIdentity : MonoBehaviour
 
     void Start()
     {
-        
+        //Give ourselves a temporary ID
+        ObjectID = Atlas.AssignTempID(ObjectID);
+
         //Find the network interface
         networkController = FindObjectOfType<EZNetworking>();
 
         //Get our ID
         if (networkController != null)
         {
-            ID = networkController.AssignID();
+            ObjectID = networkController.AssignID(this.gameObject, ObjectID);
         }
-        
+
         //Get the rate at which we should send updates to the network
         networkUpdateRate = sendDelay;
 
@@ -67,20 +77,20 @@ public class NetworkIdentity : MonoBehaviour
     //Update Loop Tied to Our Fixed Update Info
     void FixedUpdate()
     {
-        //Sanity Checks
-        if (networkController != null)
+        //update timer
+        currentTime += Time.deltaTime;
+
+        //If we have reached our threshold to send our info
+        if (currentTime >= networkUpdateRate)
         {
-            if (Atlas.networkActive)
+            //Sanity Checks
+            if (networkController != null)
             {
-                if (ID != -1)
+                if (Atlas.networkActive && Atlas.networkAuthed)
                 {
-                    //update timer
-                    currentTime += Time.deltaTime;
-
-                    //If we have reached our threshold to send our info
-                    if (currentTime >= networkUpdateRate)
+                    //Less than 0 means no valid network ID
+                    if (ObjectID > 0)
                     {
-
                         //Carry out an action based on our type
                         switch (type)
                         {
@@ -110,20 +120,28 @@ public class NetworkIdentity : MonoBehaviour
                         //reset timer
                         currentTime = 0.0f;
                     }
+                    else
+                    {
+                        Debug.LogError("Invalid Network ID {" + ObjectID + "}, retrying...");
+                        if (Atlas.isClient)
+                        {
+                            networkController.AssignID(this.gameObject, ObjectID);
+                        }
+                        else
+                        {
+                            ObjectID = networkController.AssignID(this.gameObject, ObjectID);
+                        }
+                    }
                 }
                 else
                 {
-                    Debug.LogError("Invalid Network ID: -1");
+                    Debug.LogWarning("A Network Identity Is Active In The Scene But There Is No Network Currently Active Or We Have Not Completed A Handshake");
                 }
             }
             else
             {
-                Debug.LogWarning("A Network Identity Is Active In The Scene But There Is No Network Currently Active");
+                Debug.LogError("Could not find network interface");
             }
         }
-        else
-        {
-            Debug.LogError("Could not find network interface");
-        }
-    }
+    } 
 }

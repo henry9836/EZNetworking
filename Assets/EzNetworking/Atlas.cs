@@ -10,6 +10,27 @@ public static class Atlas
     public static bool isServer = false;
     public static bool isClient = false;
     public static bool networkActive = false;
+    public static bool networkAuthed = false;
+    public static int ID = -1;
+
+    private static int lastObjID = -5;
+
+    public static int AssignTempID(int ObjID)
+    {
+        //But you already have a network ID
+        if (ObjID > 0)
+        {
+            return ObjID;
+        }
+        //What we already have an ID
+        else if (ObjID < -1)
+        {
+            lastObjID--;
+            return lastObjID;
+        }
+        //Error
+        return -1;
+    }
 
     public enum PACKETTYPE
     {
@@ -18,8 +39,11 @@ public static class Atlas
         ACK,
         REQALLGAMEINFO,
         REQOBJECTSTATE,
+        REQISTERNEWOBJID,
+        NEWOBJID,
         WORLDINFO,
         OBJECTSTATE,
+        SPAWNOBJ,
         DISCONNECT,
         BASIC,
         TRANSFORM,
@@ -60,6 +84,7 @@ public static class Atlas
             lastHeartbeat = 0.0f;
         }
 
+        public int ID;
         public AUTHTYPE authState;
         public byte[] lastMessage;
         public IPEndPoint clientEP;

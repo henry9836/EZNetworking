@@ -21,7 +21,6 @@ public class NetworkTest : MonoBehaviour
     public string targetIP = "127.0.0.1";
 
     //Privates
-    private bool serverMode = false;
     private IPEndPoint listenPoint;
     private UdpClient network;
     private bool timeOutHandShake = false;
@@ -169,7 +168,7 @@ public class NetworkTest : MonoBehaviour
         network = new UdpClient(port);
         listenPoint = new IPEndPoint(IPAddress.Any, port);
 
-        serverMode = true;
+        //serverMode = true;
 
         while (true)
         {
