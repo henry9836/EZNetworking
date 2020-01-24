@@ -45,26 +45,7 @@ public class EZNetworking : MonoBehaviour
     //Const
     private const string idSeperator = "::";
     private const string ACK = "ACK";
-    
-    public void pleaseWorkAssHole(int oldID, int newID) //Doesn't work because of gameobjects and threading
-    {
-        Debug.LogError("OLDID: " + oldID.ToString() + " NEWID: " + newID);
-        Debug.Log("DEBUG START");
-        for (int i = 0; i < pendingIDObjects.Count; i++)
-        {
-            Debug.Log("DEBUG LOOP");
-            if (pendingIDObjects[i].oldID == oldID)
-            {
-                Debug.Log("DEBUG END");
-                Debug.LogError("I FOUND IT YAY {" + newID.ToString() + "}");
-                pendingIDObjects[i].newID = newID;
-                return;
-            }
-        }
-        Debug.Log("DEBUG END");
-        Debug.LogError("Cannot find the gameobject with the ID the server gave to us {" + oldID.ToString() + "}");
-
-    }
+   
 
     //Assign Target IP
     public void AssignIP(string newIP)
@@ -374,7 +355,22 @@ public class EZNetworking : MonoBehaviour
                         int newID = int.Parse(infoStr.Substring(newPos + 1));
 
                         //Find the Object with the tempID and replace tempID
-                        pleaseWorkAssHole(oldID, newID);
+                        Debug.LogError("OLDID: " + oldID.ToString() + " NEWID: " + newID);
+                        Debug.Log("DEBUG START");
+                        for (int i = 0; i < pendingIDObjects.Count; i++)
+                        {
+                            Debug.Log("DEBUG LOOP");
+                            if (pendingIDObjects[i].oldID == oldID)
+                            {
+                                Debug.Log("DEBUG END");
+                                Debug.LogError("I FOUND IT YAY {" + newID.ToString() + "}");
+                                pendingIDObjects[i].newID = newID;
+                                return;
+                            }
+                        }
+                        Debug.Log("DEBUG END");
+                        Debug.LogError("Cannot find the gameobject with the ID the server gave to us {" + oldID.ToString() + "}");
+
                         break;
                     }
                 default:
