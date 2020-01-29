@@ -124,4 +124,6 @@ MonoBehaviour:
   type: 1
   safeSend: 0
   serverOnlyObject: 0
-  localPlayerAuthority: 0
+  localPlayerAuthority: 1
+  ObjectID: -1
+  ObjectType: -1

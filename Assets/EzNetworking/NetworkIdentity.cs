@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Text;
 using System.Collections;
 using System.Collections.Generic;
@@ -14,15 +15,26 @@ public class NetworkIdentity : MonoBehaviour
     public bool serverOnlyObject = false;
     public bool localPlayerAuthority = false;
     public int ObjectID = -1;
+    public int ObjectType = -1;
 
     private EZNetworking networkController;
     private float networkUpdateRate;
     private float currentTime = 0.0f;
-    
+    private int overrideID = -1;
+    private bool isOriginal = false;
+    private float sendRegDelay = 0.5f;
+
+    //Temp End Point
+    private IPEndPoint nullEP = null;
 
     public void updateID(int newID)
     {
         ObjectID = newID;
+    }
+
+    public void OverrideID(int newID)
+    {
+        overrideID = newID;
     }
 
     void BasicLogic()
@@ -32,8 +44,9 @@ public class NetworkIdentity : MonoBehaviour
 
     void TransformLogic()
     {
-        //Get infomation
-        string data = ObjectID.ToString() + "$" + transform.position.ToString();
+        //Pack infomation
+        //SAFESEND+CLIENTID+OBJID+LOCALPLAYERAUTH+OBJTYPE+DATA
+        string data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetObjectIDSeperator + ObjectID.ToString() + Atlas.packetObjectLocalAuthSeperator + (Convert.ToInt32(localPlayerAuthority)).ToString() + Atlas.packetObjectTypeSeperator + ObjectType.ToString() + Atlas.packetObjectDataSeperator + transform.position.ToString();
 
         //Encode for network
         byte[] networkData = Encoding.ASCII.GetBytes(data);
@@ -41,16 +54,21 @@ public class NetworkIdentity : MonoBehaviour
         //Send infomation
         if (safeSend)
         {
-            //networkController.SafeSend(Atlas.PACKETTYPE.TRANSFORM, networkData);
+            networkController.SafeSend(Atlas.PACKETTYPE.TRANSFORM, networkData, nullEP);
         }
         else {
-            //networkController.Send(Atlas.PACKETTYPE.TRANSFORM, networkData);
+            networkController.Send(Atlas.PACKETTYPE.TRANSFORM, networkData, nullEP);
         }
     }
 
     void RigidbodyLogic()
     {
 
+    }
+
+    public void IsOriginal()
+    {
+        isOriginal = true;
     }
 
     void Start()
@@ -77,6 +95,13 @@ public class NetworkIdentity : MonoBehaviour
     //Update Loop Tied to Our Fixed Update Info
     void FixedUpdate()
     {
+        //override ID
+        if (overrideID >= 0)
+        {
+            Debug.Log("Override ID...");
+            ObjectID = overrideID;
+        }
+
         //update timer
         currentTime += Time.deltaTime;
 
@@ -86,50 +111,65 @@ public class NetworkIdentity : MonoBehaviour
             //Sanity Checks
             if (networkController != null)
             {
+                //If we are connected to a network
                 if (Atlas.networkActive && Atlas.networkAuthed)
                 {
+                    
                     //Less than 0 means no valid network ID
                     if (ObjectID > 0)
                     {
-                        //Carry out an action based on our type
-                        switch (type)
+                        //Check for invalid or strange configs
+                        if (((Atlas.isClient && localPlayerAuthority && isOriginal) || (Atlas.isServer && isOriginal)) && !serverOnlyObject)
                         {
-                            case Atlas.NETWORKOBJTYPE.BASIC:
-                                {
-                                    BasicLogic();
-                                    break;
-                                }
-                            case Atlas.NETWORKOBJTYPE.TRANSFORM:
-                                {
-                                    TransformLogic();
-                                    break;
-                                }
-                            case Atlas.NETWORKOBJTYPE.RIGIDBODY:
-                                {
-                                    RigidbodyLogic();
-                                    break;
-                                }
-                            default:
-                                {
-                                    Debug.LogWarning("Could not determine type for Network Identity");
-                                    break;
-                                }
-                        }
+                            //Carry out an action based on our type
+                            switch (type)
+                            {
+                                case Atlas.NETWORKOBJTYPE.BASIC:
+                                    {
+                                        BasicLogic();
+                                        break;
+                                    }
+                                case Atlas.NETWORKOBJTYPE.TRANSFORM:
+                                    {
+                                        TransformLogic();
+                                        break;
+                                    }
+                                case Atlas.NETWORKOBJTYPE.RIGIDBODY:
+                                    {
+                                        RigidbodyLogic();
+                                        break;
+                                    }
+                                default:
+                                    {
+                                        Debug.LogWarning("Could not determine type for Network Identity");
+                                        break;
+                                    }
+                            }
 
-
-                        //reset timer
-                        currentTime = 0.0f;
-                    }
-                    else
-                    {
-                        Debug.LogError("Invalid Network ID {" + ObjectID + "}, retrying...");
-                        if (Atlas.isClient)
-                        {
-                            networkController.AssignID(this.gameObject, ObjectID);
+                            //reset timer
+                            currentTime = 0.0f;
                         }
                         else
                         {
-                            ObjectID = networkController.AssignID(this.gameObject, ObjectID);
+                            Debug.LogWarning("Network Identity has incorrect bool config");
+                        }
+                    }
+                    else
+                    {
+                        if (currentTime >= sendRegDelay)
+                        {
+                            Debug.LogError("Invalid Network ID {" + ObjectID + "}, retrying...");
+                            if (Atlas.isClient)
+                            {
+                                networkController.AssignID(this.gameObject, ObjectID);
+                            }
+                            else
+                            {
+                                ObjectID = networkController.AssignID(this.gameObject, ObjectID);
+                            }
+
+                            //reset timer
+                            currentTime = 0.0f;
                         }
                     }
                 }

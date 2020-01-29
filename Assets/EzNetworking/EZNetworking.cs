@@ -9,7 +9,7 @@ using UnityEngine;
 
 public class EZNetworking : MonoBehaviour
 {
-    //Structs
+    //Pending ID Class to be used for queuing Obj IDs
     class PendingID
     {
         public PendingID(int _oldID, int _newID)
@@ -21,6 +21,40 @@ public class EZNetworking : MonoBehaviour
         public GameObject refgameobject;
         public int oldID;
         public int newID;
+    }
+
+    class PendingWorkItem
+    {
+        public enum WorkType
+        {
+            UNASSIGNED,
+            TRANSFORMUPDATE
+        }
+
+        public PendingWorkItem()
+        {
+
+        }
+
+        public PendingWorkItem(bool _safeSendFlag, int _senderID, int _objID, int _objType, string _objData, WorkType _workType)
+        {
+            safeSendFlag = _safeSendFlag;
+            senderID = _senderID;
+            objID = _objID;
+            objType = _objType;
+            objData = _objData;
+            workType = _workType;
+        }
+
+
+        public bool safeSendFlag = false;
+        public int senderID = -1;
+        public int objID = -1;
+        public int objType = -1;
+        public string objData = "";
+        public WorkType workType = WorkType.UNASSIGNED;
+
+
     }
 
     //Publics
@@ -37,15 +71,16 @@ public class EZNetworking : MonoBehaviour
     //Privates
     private List<Atlas.ClientObject> clients = new List<Atlas.ClientObject>();
     private List<PendingID> pendingIDObjects = new List<PendingID>();
+    private List<PendingWorkItem> pendingWorkItems = new List<PendingWorkItem>();
+    private List<GameObject> localObjs = new List<GameObject>();
     private IPEndPoint listenPoint;
     private UdpClient network;
     private bool timeOutHandShake = false;
-    private int NextID = 1;
+    private int NextObjID = 1;
+    private int NextNetID = 1;
 
-    //Const
-    private const string idSeperator = "::";
-    private const string ACK = "ACK";
-   
+    
+         
 
     //Assign Target IP
     public void AssignIP(string newIP)
@@ -59,15 +94,13 @@ public class EZNetworking : MonoBehaviour
         //If we are the server we can assign the ID
         if (Atlas.isServer)
         {
-            Debug.Log("I AM SERVER FOR THING");
-            int returnVal = NextID;
-            NextID++;
+            int returnVal = NextObjID;
+            NextObjID++;
             return returnVal;
         }
         //Request ID From Server
         else
         {
-            Debug.Log("REQ SERVER FOR THING");
             pendingIDObjects.Add(new PendingID(currentID, -1));
             pendingIDObjects[pendingIDObjects.Count - 1].refgameobject = obj;
             Send(Atlas.PACKETTYPE.REQISTERNEWOBJID, Encoding.ASCII.GetBytes(obj.GetComponent<NetworkIdentity>().ObjectID.ToString()), listenPoint);
@@ -86,7 +119,7 @@ public class EZNetworking : MonoBehaviour
         }
 
         //Insert type infront of data
-        byte[] header = Encoding.ASCII.GetBytes(((int)type) + idSeperator);
+        byte[] header = Encoding.ASCII.GetBytes(((int)type) + Atlas.packetTypeSeperator);
         byte[] packet = new byte[header.Length + data.Length];
 
         header.CopyTo(packet, 0);
@@ -122,7 +155,7 @@ public class EZNetworking : MonoBehaviour
         for (int i = 0; i < SafeSendRepeatCount; i++)
         {
             //Insert type infront of data
-            byte[] header = Encoding.ASCII.GetBytes(((int)type) + idSeperator);
+            byte[] header = Encoding.ASCII.GetBytes(((int)type) + Atlas.packetTypeSeperator);
             byte[] packet = new byte[header.Length + data.Length];
             header.CopyTo(packet, 0);
             data.CopyTo(packet, header.Length);
@@ -146,46 +179,9 @@ public class EZNetworking : MonoBehaviour
         }
     }
 
-    public void Spawn(GameObject prefab, Vector3 position, Quaternion quaternion)
-    {
-        //Check if prefab is in spawnable list
-        for (int i = 0; i < spawnableObjects.Count; i++)
-        {
-            if (spawnableObjects[i] == prefab)
-            {
-                //Spawn object, let network identity handle network
-                Instantiate(prefab, position, quaternion);
-                return;
-            }
-        }
-        Debug.LogWarning("Attempted to spawn an object that isn't in the spawnable objects list, ignoring...");
-    }
+   
 
-    public void Start()
-    {
-        timeoutThreshold *= 1000; //convert from seconds to milliseconds
-    }
 
-    //Initializers
-    public void StartServer()
-    {
-        Debug.LogError("Server Mode");
-
-        Thread mainServerThread = new Thread(ServerThread);
-
-        mainServerThread.Start();
-
-    }
-
-    public void StartClient()
-    {
-        Debug.LogError("Client Mode");
-
-        Thread mainClientThread = new Thread(ClientLoop);
-
-        mainClientThread.Start();
-
-    }
 
     //Timeout Thread
     private void TimeoutThread()
@@ -234,6 +230,8 @@ public class EZNetworking : MonoBehaviour
 
         }
 
+        Atlas.networkActive = false;
+        Atlas.networkAuthed = false;
         Debug.LogError("Could Not Complete Handshake");
     }
 
@@ -268,14 +266,14 @@ public class EZNetworking : MonoBehaviour
 
         //Decode Data Type
         string dataStr = Encoding.ASCII.GetString(data);
-        Debug.LogError("Server Received: " + dataStr);
+        Debug.Log("Server Received: " + dataStr);
 
-        int cutPosition = dataStr.IndexOf(idSeperator);
+        int cutPosition = dataStr.IndexOf(Atlas.packetTypeSeperator);
 
         if (cutPosition != -1)
         {
             int type = int.Parse(dataStr.Substring(0, cutPosition));
-            string infoStr = dataStr.Substring(cutPosition+idSeperator.Length);
+            string infoStr = dataStr.Substring(cutPosition+Atlas.packetTypeSeperator.Length);
 
             Debug.Log("Infomation: type{" + type.ToString() +"} infomation: " + infoStr);
 
@@ -291,7 +289,9 @@ public class EZNetworking : MonoBehaviour
             {
                 case (int)Atlas.PACKETTYPE.HANDSHAKEACKREQ:
                     {
-                        //Send back a ACK
+                        //Send back a ACK with the client's ID
+                        string ACK = "ACK:" + NextNetID.ToString();
+                        NextNetID++;
                         SafeSend(Atlas.PACKETTYPE.ACK, Encoding.ASCII.GetBytes(ACK), client.clientEP);
                         client.authState = Atlas.ClientObject.AUTHTYPE.HANDSHAKE_SUCCEED;
                         break;
@@ -303,6 +303,32 @@ public class EZNetworking : MonoBehaviour
                         int newID = AssignID(null, -1);
                         Debug.Log("OLD ID: " + oldID.ToString() + " NEW ID: " + newID.ToString());
                         SafeSend(Atlas.PACKETTYPE.NEWOBJID, Encoding.ASCII.GetBytes(oldID.ToString() +"$" + newID.ToString()), client.clientEP);
+                        break;
+                    }
+                case (int)Atlas.PACKETTYPE.TRANSFORM:
+                    {
+                        //Decode Packet
+                        //Debug.Log("DEBUG STR: " + Atlas.extractStr(infoStr, Atlas.packetSafeSendSeperator, Atlas.packetClientIDSeperator));
+
+                        bool safeSendFlag = int.Parse(Atlas.extractStr(infoStr, Atlas.packetSafeSendSeperator, Atlas.packetClientIDSeperator)) != 0;
+                        int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetObjectIDSeperator));
+                        int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
+                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator));
+                        string objData = infoStr.Substring(infoStr.IndexOf(Atlas.packetObjectDataSeperator) + Atlas.packetObjectDataSeperator.Length);
+
+                        Debug.Log("SENDER ID: " + senderID.ToString() + " SAFE SEND: " +  safeSendFlag + " OBJID: " + objID + " OBJTYPE: " + objType + " data["+objData+"]");
+
+                        //If it is our ID ignore
+                        if (Atlas.ID == senderID)
+                        {
+                            return;
+                        }
+
+                        //If safesend tell client we got it
+
+                        //Queue Work
+                        pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, senderID, objID, objType, objData, PendingWorkItem.WorkType.TRANSFORMUPDATE));
+
                         break;
                     }
                 default:
@@ -327,14 +353,14 @@ public class EZNetworking : MonoBehaviour
 
         //Decode Data Type
         string dataStr = Encoding.ASCII.GetString(data);
-        Debug.LogError("Client Received: " + dataStr);
+        Debug.Log("Client Received: " + dataStr);
 
-        int cutPosition = dataStr.IndexOf(idSeperator);
+        int cutPosition = dataStr.IndexOf(Atlas.packetTypeSeperator);
 
         if (cutPosition != -1)
         {
             int type = int.Parse(dataStr.Substring(0, cutPosition));
-            string infoStr = dataStr.Substring(cutPosition + idSeperator.Length);
+            string infoStr = dataStr.Substring(cutPosition + Atlas.packetTypeSeperator.Length);
 
             Debug.Log("Packet: type{" + type.ToString() + "} infomation: " + infoStr);
 
@@ -343,6 +369,8 @@ public class EZNetworking : MonoBehaviour
                 case (int)Atlas.PACKETTYPE.ACK:
                     {
                         //Server has send a ACK
+                        //Get Our NetID
+                        Atlas.ID = int.Parse(infoStr.Substring(infoStr.IndexOf(":") + 1));
                         Atlas.networkAuthed = true;
                         break;
                     }
@@ -350,20 +378,16 @@ public class EZNetworking : MonoBehaviour
                     {
                         //Get The Old and New ID
                         int newPos = infoStr.IndexOf("$");
-                        Debug.LogError(infoStr.Substring(0, newPos));
+                        Debug.Log(infoStr.Substring(0, newPos));
                         int oldID = int.Parse(infoStr.Substring(0, newPos));
                         int newID = int.Parse(infoStr.Substring(newPos + 1));
 
                         //Find the Object with the tempID and replace tempID
-                        Debug.LogError("OLDID: " + oldID.ToString() + " NEWID: " + newID);
-                        Debug.Log("DEBUG START");
+                        Debug.Log("OLDID: " + oldID.ToString() + " NEWID: " + newID);
                         for (int i = 0; i < pendingIDObjects.Count; i++)
                         {
-                            Debug.Log("DEBUG LOOP");
                             if (pendingIDObjects[i].oldID == oldID)
                             {
-                                Debug.Log("DEBUG END");
-                                Debug.LogError("I FOUND IT YAY {" + newID.ToString() + "}");
                                 pendingIDObjects[i].newID = newID;
                                 return;
                             }
@@ -373,6 +397,7 @@ public class EZNetworking : MonoBehaviour
 
                         break;
                     }
+                
                 default:
                     {
                         Debug.LogWarning("Packet has unknown type {" + type.ToString() + "}, ignoring...");
@@ -427,7 +452,7 @@ public class EZNetworking : MonoBehaviour
         //Connect to Server
         network = new UdpClient();
         listenPoint = new IPEndPoint(IPAddress.Parse(targetIP), port);
-        Debug.LogError("Connecting To: " + targetIP);
+        Debug.Log("Connecting To: " + targetIP);
         network.Connect(listenPoint);
 
         //Start Client Receive Thread
@@ -457,7 +482,45 @@ public class EZNetworking : MonoBehaviour
         serverR.Start();
     }
 
-    //Assign ids that are in the list
+    // **************************************
+    // | UNITY MAIN THREAD BELOW THIS POINT |
+    // **************************************
+
+    //Initializers
+    public void StartServer()
+    {
+        Debug.Log("Server Mode");
+        Thread mainServerThread = new Thread(ServerThread);
+        mainServerThread.Start();
+    }
+
+    public void StartClient()
+    {
+        Debug.Log("Client Mode");
+        Thread mainClientThread = new Thread(ClientLoop);
+        mainClientThread.Start();
+    }
+
+    public void Spawn(GameObject prefab, Vector3 position, Quaternion quaternion)
+    {
+        //Check if prefab is in spawnable list
+        for (int i = 0; i < spawnableObjects.Count; i++)
+        {
+            if (spawnableObjects[i] == prefab)
+            {
+                //Spawn object, let network identity handle network
+                GameObject newObj = Instantiate(prefab, position, quaternion);
+                newObj.GetComponent<NetworkIdentity>().ObjectType = i - 1;
+                newObj.GetComponent<NetworkIdentity>().IsOriginal();
+                //Add to our local objects since we instantiated it
+                localObjs.Add(newObj);
+                return;
+            }
+        }
+        Debug.LogWarning("Attempted to spawn an object that isn't in the spawnable objects list, ignoring...");
+    }
+
+    //Assign ids that are in the pending list
     void AssignPendingIDs()
     {
         for (int i = 0; i < pendingIDObjects.Count; i++)
@@ -472,10 +535,117 @@ public class EZNetworking : MonoBehaviour
         }
     }
 
+    void WorkThroughQueue()
+    {
+        //Build a list of current gameobjects
+        NetworkIdentity[] objs = GameObject.FindObjectsOfType<NetworkIdentity>();
+
+        for (int i = 0; i < pendingWorkItems.Count; i++)
+        {
+            //Find object
+            int indexOfObj = -1;
+
+            for (int j = 0; j < objs.Length; j++)
+            {
+                //If we can find a obj with the same id, it already exists
+                if (objs[j].ObjectID == pendingWorkItems[i].objID)
+                {
+                    indexOfObj = j;
+                    break;
+                }
+            }
+
+            //If Object Doesn't Exist
+            if (indexOfObj < 0)
+            {
+                //Decode pos
+                Vector3 pos = Atlas.StringToVector3(pendingWorkItems[i].objData);
+                //Create the object locally
+                GameObject objRef = Instantiate(spawnableObjects[pendingWorkItems[i].objType - 1], new Vector3(0,0,0), Quaternion.identity);
+                objRef.GetComponent<NetworkIdentity>().OverrideID(pendingWorkItems[i].objID);
+            }
+            //If Object Exists
+            else
+            {
+                Debug.LogWarning("OwO obj here");
+                //Update object
+                switch (pendingWorkItems[i].workType)
+                {
+                    case PendingWorkItem.WorkType.TRANSFORMUPDATE:
+                    {
+                            //Decode pos
+                            Vector3 pos = Atlas.StringToVector3(pendingWorkItems[i].objData);
+
+                            objs[indexOfObj].gameObject.transform.position = pos;
+
+                            break;
+                    }
+
+                    default:
+                        {
+                            Debug.LogWarning("Got a work item that cannot be understood as type of update is unknown");
+                            break;
+                        }
+                }
+            }
+
+            //Remove from list
+            pendingWorkItems.RemoveAt(i);
+
+        }
+
+    }
+
+    void RemoveDupes()
+    {
+        //Build a list of current gameobjects
+        NetworkIdentity[] objs = GameObject.FindObjectsOfType<NetworkIdentity>();
+
+        List<int> seenIDs = new List<int>();
+
+        bool destroyFlag = false;
+
+        for (int i = 0; i < objs.Length; i++)
+        {
+            //reset flag
+            destroyFlag = false;
+            //for all previous ids
+            for (int j = 0; j < seenIDs.Count; j++)
+            {
+                //have we seen this ID?
+                if (seenIDs[j] == objs[i].ObjectID)
+                {
+                    //Remove this dupe
+                    destroyFlag = true;
+                    break;
+                }
+            }
+            //Add an objects ID to the List if flag is false otherwise remove the dupe
+            if (destroyFlag)
+            {
+                Destroy(objs[i].gameObject);
+            }
+            else
+            {
+                seenIDs.Add(objs[i].ObjectID);
+            }
+        }
+    }
+
+    public void Start()
+    {
+        timeoutThreshold *= 1000; //convert from seconds to milliseconds
+    }
 
     //Loop
     void FixedUpdate()
     {
-        AssignPendingIDs();
+        //Debug.Log("MY NETID IS: " + Atlas.ID);
+        if (Atlas.isServer || (Atlas.isClient && Atlas.networkAuthed))
+        {
+            AssignPendingIDs();
+            WorkThroughQueue();
+            RemoveDupes();
+        }
     }
 }
