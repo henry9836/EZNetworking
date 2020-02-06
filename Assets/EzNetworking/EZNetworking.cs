@@ -36,7 +36,7 @@ public class EZNetworking : MonoBehaviour
 
         }
 
-        public PendingWorkItem(bool _safeSendFlag, bool _localAuth, int _senderID, int _objID, int _objType, string _objData, WorkType _workType)
+        public PendingWorkItem(bool _safeSendFlag, bool _localAuth, int _senderID, int _objID, int _objType, string _objData, int _ownerID, WorkType _workType)
         {
             safeSendFlag = _safeSendFlag;
             senderID = _senderID;
@@ -45,6 +45,7 @@ public class EZNetworking : MonoBehaviour
             objData = _objData;
             workType = _workType;
             localAuth = _localAuth;
+            ownerID = _ownerID;
         }
 
 
@@ -106,14 +107,14 @@ public class EZNetworking : MonoBehaviour
         {
             pendingIDObjects.Add(new PendingID(currentID, -1));
             pendingIDObjects[pendingIDObjects.Count - 1].refgameobject = obj;
-            Send(Atlas.PACKETTYPE.REQISTERNEWOBJID, Encoding.ASCII.GetBytes(obj.GetComponent<NetworkIdentity>().ObjectID.ToString()), listenPoint);
+            Send(Atlas.PACKETTYPE.REQISTERNEWOBJID, Encoding.ASCII.GetBytes(obj.GetComponent<NetworkIdentity>().ObjectID.ToString()), listenPoint, false);
 
             return -1;
         }
     }
 
     //Sends a packet
-    public void Send(Atlas.PACKETTYPE type, byte[] data, IPEndPoint ep)
+    public void Send(Atlas.PACKETTYPE type, byte[] data, IPEndPoint ep, bool sendToAll)
     {
         if (data.Length <= 0)
         {
@@ -138,7 +139,20 @@ public class EZNetworking : MonoBehaviour
         }
         else if (Atlas.isServer)
         {
-            network.Send(packet, packet.Length, ep);
+            //Send to one client
+            if (!sendToAll)
+            {
+                network.Send(packet, packet.Length, ep);
+            }
+            else
+            {
+                //Send to everyone
+                for (int i = 0; i < clients.Count; i++)
+                {
+                    Debug.LogWarning("Sending packet to: " + clients[i].clientEP.Address.ToString() + "["+i.ToString()+"]");
+                    network.Send(packet, packet.Length, clients[i].clientEP);
+                }
+            }
         }
         else
         {
@@ -147,7 +161,7 @@ public class EZNetworking : MonoBehaviour
     }
 
     //Sends a packet multiple times
-    public void SafeSend(Atlas.PACKETTYPE type, byte[] data, IPEndPoint ep)
+    public void SafeSend(Atlas.PACKETTYPE type, byte[] data, IPEndPoint ep, bool sendToAll)
     {
         if (data.Length <= 0)
         {
@@ -205,7 +219,7 @@ public class EZNetworking : MonoBehaviour
             timeoutThread.Start();
 
             //Hello Server?
-            Send(Atlas.PACKETTYPE.HANDSHAKEACKREQ, Encoding.ASCII.GetBytes("Hello Server!"), listenPoint);
+            Send(Atlas.PACKETTYPE.HANDSHAKEACKREQ, Encoding.ASCII.GetBytes("Hello Server!"), listenPoint, false);
 
             //Server Reply
             while (!Atlas.networkAuthed && !timeOutHandShake)
@@ -220,7 +234,7 @@ public class EZNetworking : MonoBehaviour
                 Debug.Log("Handshake Completed");
                 
                 //Request Game Infomation From Server
-                SafeSend(Atlas.PACKETTYPE.REQALLGAMEINFO, Encoding.ASCII.GetBytes("SENDGAMEINFO"), listenPoint);
+                SafeSend(Atlas.PACKETTYPE.REQALLGAMEINFO, Encoding.ASCII.GetBytes("SENDGAMEINFO"), listenPoint, false);
 
                 return;
             }
@@ -293,7 +307,7 @@ public class EZNetworking : MonoBehaviour
                         //Send back a ACK with the client's ID
                         string ACK = "ACK:" + NextNetID.ToString();
                         NextNetID++;
-                        SafeSend(Atlas.PACKETTYPE.ACK, Encoding.ASCII.GetBytes(ACK), client.clientEP);
+                        SafeSend(Atlas.PACKETTYPE.ACK, Encoding.ASCII.GetBytes(ACK), client.clientEP, false);
                         client.authState = Atlas.ClientObject.AUTHTYPE.HANDSHAKE_SUCCEED;
                         break;
                     }
@@ -303,7 +317,7 @@ public class EZNetworking : MonoBehaviour
                         int oldID = int.Parse(infoStr);
                         int newID = AssignID(null, -1);
                         Debug.Log("OLD ID: " + oldID.ToString() + " NEW ID: " + newID.ToString());
-                        SafeSend(Atlas.PACKETTYPE.NEWOBJID, Encoding.ASCII.GetBytes(oldID.ToString() +"$" + newID.ToString()), client.clientEP);
+                        SafeSend(Atlas.PACKETTYPE.NEWOBJID, Encoding.ASCII.GetBytes(oldID.ToString() +"$" + newID.ToString()), client.clientEP, false);
                         break;
                     }
                 case (int)Atlas.PACKETTYPE.TRANSFORM:
@@ -314,10 +328,12 @@ public class EZNetworking : MonoBehaviour
                         int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
                         bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
                         int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator));
-                        string objData = infoStr.Substring(infoStr.IndexOf(Atlas.packetObjectDataSeperator) + Atlas.packetObjectDataSeperator.Length);
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataSeperator, Atlas.packetOwnerSeperator);
+                        Debug.LogWarning(Atlas.extractStr(infoStr, Atlas.packetObjectDataSeperator, Atlas.packetOwnerSeperator) + " " + (Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator)));
+                        int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
 
                         //Debugging
-                        Debug.Log("SENDER ID: " + senderID.ToString() + " SAFE SEND: " +  safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data["+objData+"]");
+                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " +  safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data["+objData+"]");
 
                         //If it is our ID ignore
                         if (Atlas.ID == senderID)
@@ -330,7 +346,7 @@ public class EZNetworking : MonoBehaviour
                         //If safesend tell client we got it
 
                         //Queue Work
-                        pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, localAuth, senderID, objID, objType, objData, PendingWorkItem.WorkType.TRANSFORMUPDATE));
+                        pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, localAuth, senderID, objID, objType, objData, objOwnerID, PendingWorkItem.WorkType.TRANSFORMUPDATE));
 
                         break;
                     }
@@ -407,7 +423,35 @@ public class EZNetworking : MonoBehaviour
 
                         break;
                     }
-                
+                case (int)Atlas.PACKETTYPE.TRANSFORM:
+                    {
+                        //Decode Packet
+                        bool safeSendFlag = int.Parse(Atlas.extractStr(infoStr, Atlas.packetSafeSendSeperator, Atlas.packetClientIDSeperator)) != 0;
+                        int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetObjectIDSeperator));
+                        int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
+                        bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
+                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator));
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataSeperator, Atlas.packetOwnerSeperator);
+                        Debug.LogWarning(Atlas.extractStr(infoStr, Atlas.packetObjectDataSeperator, Atlas.packetOwnerSeperator) + " " + (Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator)));
+                        int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
+
+                        //Debugging
+                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
+
+                        //If it is our ID ignore
+                        if (Atlas.ID == senderID)
+                        {
+                            return;
+                        }
+
+                        //If safesend tell server we got it
+
+                        //Queue Work
+                        pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, localAuth, senderID, objID, objType, objData, objOwnerID, PendingWorkItem.WorkType.TRANSFORMUPDATE));
+
+
+                        break;
+                    }
                 default:
                     {
                         Debug.LogWarning("Packet has unknown type {" + type.ToString() + "}, ignoring...");
@@ -541,15 +585,13 @@ public class EZNetworking : MonoBehaviour
                 //Assign new Network ID
                 pendingIDObjects[i].refgameobject.GetComponent<NetworkIdentity>().updateID(pendingIDObjects[i].newID);
                 //Remove Pending ID
-                pendingIDObjects.RemoveAt(i); 
+                pendingIDObjects.RemoveAt(i);
             }
         }
     }
 
-    void WorkThroughQueue()
+    void WorkThroughQueue(NetworkIdentity[] objs)
     {
-        //Build a list of current gameobjects
-        NetworkIdentity[] objs = GameObject.FindObjectsOfType<NetworkIdentity>();
 
         for (int i = 0; i < pendingWorkItems.Count; i++)
         {
@@ -574,28 +616,60 @@ public class EZNetworking : MonoBehaviour
                 //Create the object locally
                 GameObject objRef = Instantiate(spawnableObjects[pendingWorkItems[i].objType - 1], new Vector3(0,0,0), Quaternion.identity);
                 objRef.GetComponent<NetworkIdentity>().OverrideID(pendingWorkItems[i].objID);
-                Debug.LogError("NEW OBJECT SETTING NETOWNERID TO: " + pendingWorkItems[i].senderID);
                 //Assign owner ID
-                pendingWorkItems[i].ownerID = pendingWorkItems[i].senderID;
                 objRef.GetComponent<NetworkIdentity>().ownerID = pendingWorkItems[i].ownerID;
             }
             //If Object Exists
             else
             {
-                //Check if packet is from owner if local is on
-                if ((pendingWorkItems[i].senderID == objs[indexOfObj].GetComponent<NetworkIdentity>().ownerID) && objs[indexOfObj].GetComponent<NetworkIdentity>().localPlayerAuthority)
+                //Server logic
+                if (Atlas.isServer)
                 {
-                    Debug.LogWarning("OwO obj here");
+                    //Check if packet is from owner if local is on
+                    if ((pendingWorkItems[i].senderID == objs[indexOfObj].ownerID) && objs[indexOfObj].localPlayerAuthority)
+                    {
+                        //Update object
+                        switch (pendingWorkItems[i].workType)
+                        {
+                            case PendingWorkItem.WorkType.TRANSFORMUPDATE:
+                                {
+                                    //Decode pos
+                                    Vector3 pos = Atlas.StringToVector3(pendingWorkItems[i].objData);
+
+                                    objs[indexOfObj].gameObject.transform.position = pos;
+
+                                    break;
+                                }
+
+                            default:
+                                {
+                                    Debug.LogWarning("Got a work item that cannot be understood as type of update is unknown");
+                                    break;
+                                }
+                        }
+                    }
+                    //Someone is trying to change stuff they shouldn't or the obj doesn't accept changes from clients
+                    else
+                    {
+                        Debug.LogWarning("[" + pendingWorkItems[i].ownerID.ToString() + "] is trying to change stuff they shouldn't or the obj doesn't accept changes from clients on object: " + objs[indexOfObj].name);
+                    }
+                }
+                //Client Logic
+                else
+                {
                     //Update object
                     switch (pendingWorkItems[i].workType)
                     {
                         case PendingWorkItem.WorkType.TRANSFORMUPDATE:
                             {
-                                //Decode pos
-                                Vector3 pos = Atlas.StringToVector3(pendingWorkItems[i].objData);
+                                //Move we don't have auth over obj
+                                if (!objs[i].localPlayerAuthority || (objs[i].localPlayerAuthority && (objs[i].ownerID != Atlas.ID)))
+                                {
+                                    //Decode pos
+                                    Vector3 pos = Atlas.StringToVector3(pendingWorkItems[i].objData);
 
-                                objs[indexOfObj].gameObject.transform.position = pos;
-
+                                    objs[indexOfObj].gameObject.transform.position = pos;
+                                }
                                 break;
                             }
 
@@ -606,11 +680,7 @@ public class EZNetworking : MonoBehaviour
                             }
                     }
                 }
-                //Someone is trying to change stuff they shouldn't or the obj doesn't accept changes from clients
-                else
-                {
-                    Debug.LogWarning("[" + pendingWorkItems[i].ownerID.ToString() + "] is trying to change stuff they shouldn't or the obj doesn't accept changes from clients on object: " + objs[indexOfObj].name);
-                }
+
             }
 
             //Remove from list
@@ -620,10 +690,8 @@ public class EZNetworking : MonoBehaviour
 
     }
 
-    void RemoveDupes()
+    void RemoveDupes(NetworkIdentity[] objs)
     {
-        //Build a list of current gameobjects
-        NetworkIdentity[] objs = GameObject.FindObjectsOfType<NetworkIdentity>();
 
         List<int> seenIDs = new List<int>();
 
@@ -664,12 +732,15 @@ public class EZNetworking : MonoBehaviour
     //Loop
     void FixedUpdate()
     {
-        //Debug.Log("MY NETID IS: " + Atlas.ID);
+        //Valid Network and Setup
         if (Atlas.isServer || (Atlas.isClient && Atlas.networkAuthed))
         {
+            //Build a list of current gameobjects
+            NetworkIdentity[] objs = GameObject.FindObjectsOfType<NetworkIdentity>();
+
             AssignPendingIDs();
-            WorkThroughQueue();
-            RemoveDupes();
+            WorkThroughQueue(objs);
+            RemoveDupes(objs);
         }
     }
 }

@@ -23,6 +23,8 @@ public static class Atlas
     public const string packetObjectTypeSeperator = "$$";
     public const string packetObjectLocalAuthSeperator = "**";
     public const string packetObjectDataSeperator = "%%";
+    public const string packetOwnerSeperator = "&&";
+    public const string packetTerminator = "[END]";
 
     //Cut and extract a substring using two other substrings as markers
     public static string extractStr(string src, string start, string end)

@@ -18,7 +18,7 @@ public class MoveAroundScriptTest : MonoBehaviour
 
     private void Update()
     {
-        if (Atlas.isClient)
+        if (Atlas.isServer || true)
         {
             if (transform.position.x > (startPos + (new Vector3(1, 0, 0) * moveDistance)).x)
             {

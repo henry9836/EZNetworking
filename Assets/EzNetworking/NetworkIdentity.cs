@@ -43,8 +43,8 @@ public class NetworkIdentity : MonoBehaviour
     void TransformLogic()
     {
         //Pack infomation
-        //SAFESEND+CLIENTID+OBJID+LOCALPLAYERAUTH+OBJTYPE+DATA
-        string data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetObjectIDSeperator + ObjectID.ToString() + Atlas.packetObjectLocalAuthSeperator + (Convert.ToInt32(localPlayerAuthority)).ToString() + Atlas.packetObjectTypeSeperator + ObjectType.ToString() + Atlas.packetObjectDataSeperator + transform.position.ToString();
+        //SAFESEND+CLIENTID+OBJID+LOCALPLAYERAUTH+OBJTYPE+DATA+OWNERID
+        string data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetObjectIDSeperator + ObjectID.ToString() + Atlas.packetObjectLocalAuthSeperator + (Convert.ToInt32(localPlayerAuthority)).ToString() + Atlas.packetObjectTypeSeperator + ObjectType.ToString() + Atlas.packetObjectDataSeperator + transform.position.ToString() + Atlas.packetOwnerSeperator + ownerID.ToString() + Atlas.packetTerminator;
 
         //Encode for network
         byte[] networkData = Encoding.ASCII.GetBytes(data);
@@ -52,10 +52,11 @@ public class NetworkIdentity : MonoBehaviour
         //Send infomation
         if (safeSend)
         {
-            networkController.SafeSend(Atlas.PACKETTYPE.TRANSFORM, networkData, null);
+            networkController.SafeSend(Atlas.PACKETTYPE.TRANSFORM, networkData, null, true);
         }
-        else {
-            networkController.Send(Atlas.PACKETTYPE.TRANSFORM, networkData, null);
+        else
+        {
+            networkController.Send(Atlas.PACKETTYPE.TRANSFORM, networkData, null, true);
         }
     }
 
@@ -93,9 +94,6 @@ public class NetworkIdentity : MonoBehaviour
     //Update Loop Tied to Our Fixed Update Info
     void FixedUpdate()
     {
-
-        Debug.LogError(Atlas.ID.ToString());
-
         //override ID
         if (overrideID >= 0)
         {
@@ -120,7 +118,7 @@ public class NetworkIdentity : MonoBehaviour
                         //Check if we know who owns us
                         if (ownerID >= 0) {
                             //Check for invalid or strange configs
-                            if (((Atlas.isClient && localPlayerAuthority && isOriginal) || (Atlas.isServer && isOriginal)) && !serverOnlyObject)
+                            if (((Atlas.isClient && localPlayerAuthority && isOriginal) || ((Atlas.isServer && isOriginal)) && !serverOnlyObject) || (Atlas.isServer && !localPlayerAuthority) || ((Atlas.isServer && localPlayerAuthority) && (ownerID == Atlas.ID))) 
                             {
                                 //Carry out an action based on our type
                                 switch (type)
