@@ -328,7 +328,7 @@ public class EZNetworking : MonoBehaviour
                         int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
                         bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
                         int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator));
-                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataSeperator, Atlas.packetOwnerSeperator);
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataStartMark, Atlas.packetObjectDataTerminator);
                         int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
 
                         //Debugging
@@ -430,8 +430,7 @@ public class EZNetworking : MonoBehaviour
                         int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
                         bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
                         int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator));
-                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataSeperator, Atlas.packetOwnerSeperator);
-                        Debug.LogWarning(Atlas.extractStr(infoStr, Atlas.packetObjectDataSeperator, Atlas.packetOwnerSeperator) + " " + (Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator)));
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataStartMark, Atlas.packetObjectDataTerminator); 
                         int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
 
                         //Debugging
@@ -610,10 +609,15 @@ public class EZNetworking : MonoBehaviour
             //If Object Doesn't Exist
             if (indexOfObj < 0)
             {
+
+                //Extract Raw Strings
+                string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
                 //Decode pos
-                Vector3 pos = Atlas.StringToVector3(pendingWorkItems[i].objData);
+                Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
+                Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
+                Quaternion rot = Quaternion.Euler(Atlas.StringToVector3(dataStrArray[1]));
                 //Create the object locally
-                GameObject objRef = Instantiate(spawnableObjects[pendingWorkItems[i].objType - 1], new Vector3(0,0,0), Quaternion.identity);
+                GameObject objRef = Instantiate(spawnableObjects[pendingWorkItems[i].objType - 1], pos, rot);
                 objRef.GetComponent<NetworkIdentity>().OverrideID(pendingWorkItems[i].objID);
                 //Assign owner ID
                 objRef.GetComponent<NetworkIdentity>().ownerID = pendingWorkItems[i].ownerID;
@@ -632,15 +636,16 @@ public class EZNetworking : MonoBehaviour
                         {
                             case PendingWorkItem.WorkType.TRANSFORMUPDATE:
                                 {
-                                    //Decode pos
-                                    Vector3 pos = Atlas.StringToVector3(pendingWorkItems[i].objData);
+                                    //Extract Raw Strings
+                                    string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
 
-                                    Debug.LogWarning("T0" + objs[indexOfObj].smoothMove.ToString());
+                                    Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
+                                    Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
+                                    Quaternion rot = Quaternion.Euler(Atlas.StringToVector3(dataStrArray[1]));
 
                                     if (objs[indexOfObj].smoothMove)
                                     {
-                                        Debug.LogError("T1" + pos.ToString());
-                                        objs[indexOfObj].UpdateTargetPos(pos);
+                                        objs[indexOfObj].UpdateTargets(pos, scale, rot);
                                     }
                                     else
                                     {
@@ -674,15 +679,16 @@ public class EZNetworking : MonoBehaviour
                                 //Move we don't have auth over obj
                                 if (!objs[i].localPlayerAuthority || (objs[i].localPlayerAuthority && (objs[i].ownerID != Atlas.ID)))
                                 {
-                                    //Decode pos
-                                    Vector3 pos = Atlas.StringToVector3(pendingWorkItems[i].objData);
+                                    //Extract Raw Strings
+                                    string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
 
-                                    Debug.LogWarning("T0" + objs[indexOfObj].smoothMove.ToString());
+                                    Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
+                                    Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
+                                    Quaternion rot = Quaternion.Euler(Atlas.StringToVector3(dataStrArray[1]));
 
                                     if (objs[indexOfObj].smoothMove)
                                     {
-                                        Debug.LogError("T1" + pos.ToString()); 
-                                        objs[indexOfObj].UpdateTargetPos(pos);
+                                        objs[indexOfObj].UpdateTargets(pos, scale, rot);
                                     }
                                     else
                                     {
