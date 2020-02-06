@@ -118,7 +118,7 @@ public class NetworkIdentity : MonoBehaviour
                         //Check if we know who owns us
                         if (ownerID >= 0) {
                             //Check for invalid or strange configs
-                            if (((Atlas.isClient && localPlayerAuthority && isOriginal) || ((Atlas.isServer && isOriginal)) && !serverOnlyObject) || (Atlas.isServer && !localPlayerAuthority) || ((Atlas.isServer && localPlayerAuthority) && (ownerID == Atlas.ID))) 
+                            if ((Atlas.isClient && localPlayerAuthority && isOriginal) || (Atlas.isServer && !serverOnlyObject))
                             {
                                 //Carry out an action based on our type
                                 switch (type)
