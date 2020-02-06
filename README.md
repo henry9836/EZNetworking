@@ -7,6 +7,9 @@ A Cross Platform Network Framework For Unity
 To make a framework that can be intergrated with projects easily and work on multiple platforms out of the box
 
 ### What the Project Can Currently Do
-- Performs A Handshake
-- Send/Receive messages between linux and windows
-- Lerping Positional Movement
+- Performs Handshake
+- Custom Send Packet Rate Per Object
+- Object Ownership
+- Object Transform Synchronization 
+- Smooth Lerping Object Transform Synchronization 
+- Object Midgame Catchup
