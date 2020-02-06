@@ -12,4 +12,4 @@ To make a framework that can be intergrated with projects easily and work on mul
 - Object Ownership
 - Object Transform Synchronization 
 - Smooth Lerping Object Transform Synchronization 
-- Object Midgame Catchup
+- Object Transform Midgame Catchup
