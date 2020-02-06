@@ -11,7 +11,7 @@ public class TestSpawnCube : MonoBehaviour
     void FixedUpdate()
     {
         //if (Atlas.networkActive && Atlas.isServer)
-        if (Atlas.networkActive && Atlas.isClient)
+        if (Atlas.networkActive && Atlas.isClient && Atlas.networkAuthed)
         {
             if (!spawned)
             {

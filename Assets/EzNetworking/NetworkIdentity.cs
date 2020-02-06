@@ -16,6 +16,7 @@ public class NetworkIdentity : MonoBehaviour
     public bool localPlayerAuthority = false;
     public int ObjectID = -1;
     public int ObjectType = -1;
+    public int ownerID = -1;
 
     private EZNetworking networkController;
     private float networkUpdateRate;
@@ -23,9 +24,6 @@ public class NetworkIdentity : MonoBehaviour
     private int overrideID = -1;
     private bool isOriginal = false;
     private float sendRegDelay = 0.5f;
-
-    //Temp End Point
-    private IPEndPoint nullEP = null;
 
     public void updateID(int newID)
     {
@@ -54,10 +52,10 @@ public class NetworkIdentity : MonoBehaviour
         //Send infomation
         if (safeSend)
         {
-            networkController.SafeSend(Atlas.PACKETTYPE.TRANSFORM, networkData, nullEP);
+            networkController.SafeSend(Atlas.PACKETTYPE.TRANSFORM, networkData, null);
         }
         else {
-            networkController.Send(Atlas.PACKETTYPE.TRANSFORM, networkData, nullEP);
+            networkController.Send(Atlas.PACKETTYPE.TRANSFORM, networkData, null);
         }
     }
 
@@ -95,10 +93,12 @@ public class NetworkIdentity : MonoBehaviour
     //Update Loop Tied to Our Fixed Update Info
     void FixedUpdate()
     {
+
+        Debug.LogError(Atlas.ID.ToString());
+
         //override ID
         if (overrideID >= 0)
         {
-            Debug.Log("Override ID...");
             ObjectID = overrideID;
         }
 
@@ -114,44 +114,50 @@ public class NetworkIdentity : MonoBehaviour
                 //If we are connected to a network
                 if (Atlas.networkActive && Atlas.networkAuthed)
                 {
-                    
                     //Less than 0 means no valid network ID
                     if (ObjectID > 0)
                     {
-                        //Check for invalid or strange configs
-                        if (((Atlas.isClient && localPlayerAuthority && isOriginal) || (Atlas.isServer && isOriginal)) && !serverOnlyObject)
-                        {
-                            //Carry out an action based on our type
-                            switch (type)
+                        //Check if we know who owns us
+                        if (ownerID >= 0) {
+                            //Check for invalid or strange configs
+                            if (((Atlas.isClient && localPlayerAuthority && isOriginal) || (Atlas.isServer && isOriginal)) && !serverOnlyObject)
                             {
-                                case Atlas.NETWORKOBJTYPE.BASIC:
-                                    {
-                                        BasicLogic();
-                                        break;
-                                    }
-                                case Atlas.NETWORKOBJTYPE.TRANSFORM:
-                                    {
-                                        TransformLogic();
-                                        break;
-                                    }
-                                case Atlas.NETWORKOBJTYPE.RIGIDBODY:
-                                    {
-                                        RigidbodyLogic();
-                                        break;
-                                    }
-                                default:
-                                    {
-                                        Debug.LogWarning("Could not determine type for Network Identity");
-                                        break;
-                                    }
-                            }
+                                //Carry out an action based on our type
+                                switch (type)
+                                {
+                                    case Atlas.NETWORKOBJTYPE.BASIC:
+                                        {
+                                            BasicLogic();
+                                            break;
+                                        }
+                                    case Atlas.NETWORKOBJTYPE.TRANSFORM:
+                                        {
+                                            TransformLogic();
+                                            break;
+                                        }
+                                    case Atlas.NETWORKOBJTYPE.RIGIDBODY:
+                                        {
+                                            RigidbodyLogic();
+                                            break;
+                                        }
+                                    default:
+                                        {
+                                            Debug.LogWarning("Could not determine type for Network Identity");
+                                            break;
+                                        }
+                                }
 
-                            //reset timer
-                            currentTime = 0.0f;
+                                //reset timer
+                                currentTime = 0.0f;
+                            }
+                            else
+                            {
+                                Debug.LogWarning("Network Identity has incorrect bool config");
+                            }
                         }
                         else
                         {
-                            Debug.LogWarning("Network Identity has incorrect bool config");
+                            Debug.LogWarning("No Network Owner On Object: " + gameObject.name);
                         }
                     }
                     else
