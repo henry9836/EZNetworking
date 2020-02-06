@@ -329,7 +329,6 @@ public class EZNetworking : MonoBehaviour
                         bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
                         int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator));
                         string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataSeperator, Atlas.packetOwnerSeperator);
-                        Debug.LogWarning(Atlas.extractStr(infoStr, Atlas.packetObjectDataSeperator, Atlas.packetOwnerSeperator) + " " + (Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator)));
                         int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
 
                         //Debugging
@@ -636,7 +635,17 @@ public class EZNetworking : MonoBehaviour
                                     //Decode pos
                                     Vector3 pos = Atlas.StringToVector3(pendingWorkItems[i].objData);
 
-                                    objs[indexOfObj].gameObject.transform.position = pos;
+                                    Debug.LogWarning("T0" + objs[indexOfObj].smoothMove.ToString());
+
+                                    if (objs[indexOfObj].smoothMove)
+                                    {
+                                        Debug.LogError("T1" + pos.ToString());
+                                        objs[indexOfObj].UpdateTargetPos(pos);
+                                    }
+                                    else
+                                    {
+                                        objs[indexOfObj].gameObject.transform.position = pos;
+                                    }
 
                                     break;
                                 }
@@ -668,7 +677,17 @@ public class EZNetworking : MonoBehaviour
                                     //Decode pos
                                     Vector3 pos = Atlas.StringToVector3(pendingWorkItems[i].objData);
 
-                                    objs[indexOfObj].gameObject.transform.position = pos;
+                                    Debug.LogWarning("T0" + objs[indexOfObj].smoothMove.ToString());
+
+                                    if (objs[indexOfObj].smoothMove)
+                                    {
+                                        Debug.LogError("T1" + pos.ToString()); 
+                                        objs[indexOfObj].UpdateTargetPos(pos);
+                                    }
+                                    else
+                                    {
+                                        objs[indexOfObj].gameObject.transform.position = pos;
+                                    }
                                 }
                                 break;
                             }

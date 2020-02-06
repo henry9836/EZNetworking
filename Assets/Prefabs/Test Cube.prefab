@@ -127,3 +127,6 @@ MonoBehaviour:
   localPlayerAuthority: 1
   ObjectID: -1
   ObjectType: -1
+  ownerID: -1
+  smoothMove: 1
+  smoothMoveDuration: 1

@@ -17,6 +17,9 @@ public class NetworkIdentity : MonoBehaviour
     public int ObjectID = -1;
     public int ObjectType = -1;
     public int ownerID = -1;
+    public bool smoothMove = true;
+    public bool smoothMoveMatchesSendRate = true;
+    public float smoothMoveDuration = 0.2f;
 
     private EZNetworking networkController;
     private float networkUpdateRate;
@@ -24,6 +27,9 @@ public class NetworkIdentity : MonoBehaviour
     private int overrideID = -1;
     private bool isOriginal = false;
     private float sendRegDelay = 0.5f;
+    private Vector3 targetPos = Vector3.zero;
+    private Vector3 oldPos = Vector3.zero;
+    private float t = 0.0f;
 
     public void updateID(int newID)
     {
@@ -33,6 +39,15 @@ public class NetworkIdentity : MonoBehaviour
     public void OverrideID(int newID)
     {
         overrideID = newID;
+    }
+
+    public void UpdateTargetPos(Vector3 pos)
+    {
+        Debug.LogError("T2" + pos.ToString());
+        targetPos = pos;
+        oldPos = transform.position;
+        t = 0.0f;
+        Debug.LogError("T3" + targetPos.ToString());
     }
 
     void BasicLogic()
@@ -72,6 +87,11 @@ public class NetworkIdentity : MonoBehaviour
 
     void Start()
     {
+        if (smoothMoveMatchesSendRate)
+        {
+            smoothMoveDuration = sendDelay;
+        }
+
         //Give ourselves a temporary ID
         ObjectID = Atlas.AssignTempID(ObjectID);
 
@@ -94,6 +114,14 @@ public class NetworkIdentity : MonoBehaviour
     //Update Loop Tied to Our Fixed Update Info
     void FixedUpdate()
     {
+        //Lerp Movement
+        if (smoothMove && ((Atlas.isClient && (!localPlayerAuthority && ownerID != Atlas.ID)) || (Atlas.isServer && ownerID != Atlas.ID)))
+        {
+            Debug.LogError("LERPING: " + t.ToString() + " V3OLD" + oldPos.ToString() + " V3NEW" + targetPos.ToString());
+            t += Time.deltaTime / smoothMoveDuration;
+            transform.position = Vector3.Lerp(oldPos, targetPos, t);
+        }
+
         //override ID
         if (overrideID >= 0)
         {
