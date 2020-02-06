@@ -22,15 +22,24 @@ public static class Atlas
     public const string packetObjectIDSeperator = "##";
     public const string packetObjectTypeSeperator = "$$";
     public const string packetObjectLocalAuthSeperator = "**";
+    public const string packetObjectDataStartMark = "[D_START]";
     public const string packetObjectDataSeperator = "%%";
+    public const string packetObjectDataTerminator = "[D_END]";
     public const string packetOwnerSeperator = "&&";
-    public const string packetTerminator = "[END]";
+    public const string packetTerminator = "[P_END]";
 
     //Cut and extract a substring using two other substrings as markers
     public static string extractStr(string src, string start, string end)
     {
         string result = "";
-        result = src.Substring(src.IndexOf(start) + start.Length, (src.IndexOf(end) - (src.IndexOf(start) + start.Length)));
+        if (start == null)
+        {
+            result = src.Substring(0, (src.IndexOf(end)));
+        }
+        else
+        {
+            result = src.Substring(src.IndexOf(start) + start.Length, (src.IndexOf(end) - (src.IndexOf(start) + start.Length)));
+        }
         return result;
     }
 

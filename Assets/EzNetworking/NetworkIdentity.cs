@@ -29,6 +29,10 @@ public class NetworkIdentity : MonoBehaviour
     private float sendRegDelay = 0.5f;
     private Vector3 targetPos = Vector3.zero;
     private Vector3 oldPos = Vector3.zero;
+    private Quaternion targetRot = Quaternion.identity;
+    private Quaternion oldRot = Quaternion.identity;
+    private Vector3 targetScale = Vector3.zero;
+    private Vector3 oldScale = Vector3.zero;
     private float t = 0.0f;
 
     public void updateID(int newID)
@@ -41,13 +45,16 @@ public class NetworkIdentity : MonoBehaviour
         overrideID = newID;
     }
 
-    public void UpdateTargetPos(Vector3 pos)
+    public void UpdateTargets(Vector3 pos, Vector3 scale, Quaternion rot)
     {
-        Debug.LogError("T2" + pos.ToString());
         targetPos = pos;
         oldPos = transform.position;
+        oldScale = transform.localScale;
+        targetScale = scale;
+        oldRot = transform.rotation;
+        targetRot = rot;
+
         t = 0.0f;
-        Debug.LogError("T3" + targetPos.ToString());
     }
 
     void BasicLogic()
@@ -58,8 +65,8 @@ public class NetworkIdentity : MonoBehaviour
     void TransformLogic()
     {
         //Pack infomation
-        //SAFESEND+CLIENTID+OBJID+LOCALPLAYERAUTH+OBJTYPE+DATA+OWNERID
-        string data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetObjectIDSeperator + ObjectID.ToString() + Atlas.packetObjectLocalAuthSeperator + (Convert.ToInt32(localPlayerAuthority)).ToString() + Atlas.packetObjectTypeSeperator + ObjectType.ToString() + Atlas.packetObjectDataSeperator + transform.position.ToString() + Atlas.packetOwnerSeperator + ownerID.ToString() + Atlas.packetTerminator;
+        //SAFESEND+CLIENTID+OBJID+LOCALPLAYERAUTH+OBJTYPE+D_START+DATA+D_END+OWNERID+P_END
+        string data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetObjectIDSeperator + ObjectID.ToString() + Atlas.packetObjectLocalAuthSeperator + (Convert.ToInt32(localPlayerAuthority)).ToString() + Atlas.packetObjectTypeSeperator + ObjectType.ToString() + Atlas.packetObjectDataStartMark + transform.position.ToString() + Atlas.packetObjectDataSeperator + transform.rotation.eulerAngles.ToString() + Atlas.packetObjectDataSeperator + transform.localScale.ToString() + Atlas.packetObjectDataTerminator + Atlas.packetOwnerSeperator + ownerID.ToString() + Atlas.packetTerminator;
 
         //Encode for network
         byte[] networkData = Encoding.ASCII.GetBytes(data);
@@ -115,11 +122,12 @@ public class NetworkIdentity : MonoBehaviour
     void FixedUpdate()
     {
         //Lerp Movement
-        if (smoothMove && ((Atlas.isClient && (!localPlayerAuthority && ownerID != Atlas.ID)) || (Atlas.isServer && ownerID != Atlas.ID)))
+        if (smoothMove && ((Atlas.isClient && ((!localPlayerAuthority && ownerID == Atlas.ID) || (localPlayerAuthority && ownerID != Atlas.ID))) || (Atlas.isServer && ownerID != Atlas.ID)))
         {
-            Debug.LogError("LERPING: " + t.ToString() + " V3OLD" + oldPos.ToString() + " V3NEW" + targetPos.ToString());
             t += Time.deltaTime / smoothMoveDuration;
             transform.position = Vector3.Lerp(oldPos, targetPos, t);
+            transform.localScale = Vector3.Lerp(oldScale, targetScale, t);
+            transform.rotation = Quaternion.Lerp(oldRot, targetRot, t);
         }
 
         //override ID
