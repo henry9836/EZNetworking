@@ -10,8 +10,8 @@ public class TestSpawnCube : MonoBehaviour
     // Start is called before the first frame update
     void FixedUpdate()
     {
-        //if (Atlas.networkActive && Atlas.isServer)
-        if (Atlas.networkActive && Atlas.isClient)
+        //if (Atlas.networkActive && Atlas.isServer && Atlas.networkAuthed)
+        if (Atlas.networkActive && Atlas.isClient && Atlas.networkAuthed)
         {
             if (!spawned)
             {
