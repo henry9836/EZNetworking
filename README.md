@@ -9,3 +9,4 @@ To make a framework that can be intergrated with projects easily and work on mul
 ### What the Project Can Currently Do
 - Performs A Handshake
 - Send/Receive messages between linux and windows
+- Lerping Positional Movement
