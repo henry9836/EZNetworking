@@ -12,5 +12,5 @@ To make a framework that can be intergrated with projects easily and work on mul
 - Object Ownership
 - Object Transform Synchronization 
 - Object Rigidbody Synchronization 
-- Smooth Lerping Object Synchronization 
+- Custom Lerping Object Transform Synchronization 
 - Object Transform Midgame Catchup
