@@ -11,5 +11,6 @@ To make a framework that can be intergrated with projects easily and work on mul
 - Custom Send Packet Rate Per Object
 - Object Ownership
 - Object Transform Synchronization 
-- Smooth Lerping Object Transform Synchronization 
+- Object Rigidbody Synchronization 
+- Custom Lerping Object Transform Synchronization 
 - Object Transform Midgame Catchup
