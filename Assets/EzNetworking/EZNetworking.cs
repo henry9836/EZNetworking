@@ -28,7 +28,8 @@ public class EZNetworking : MonoBehaviour
         public enum WorkType
         {
             UNASSIGNED,
-            TRANSFORMUPDATE
+            TRANSFORMUPDATE,
+            RIGIDBODYUPDATE,
         }
 
         public PendingWorkItem()
@@ -327,7 +328,7 @@ public class EZNetworking : MonoBehaviour
                         int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetObjectIDSeperator));
                         int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
                         bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
-                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator));
+                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetObjectDataStartMark));
                         string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataStartMark, Atlas.packetObjectDataTerminator);
                         int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
 
@@ -346,6 +347,34 @@ public class EZNetworking : MonoBehaviour
 
                         //Queue Work
                         pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, localAuth, senderID, objID, objType, objData, objOwnerID, PendingWorkItem.WorkType.TRANSFORMUPDATE));
+
+                        break;
+                    }
+                case (int)Atlas.PACKETTYPE.RIGIDBODY:
+                    {
+                        //Decode Packet
+                        bool safeSendFlag = int.Parse(Atlas.extractStr(infoStr, Atlas.packetSafeSendSeperator, Atlas.packetClientIDSeperator)) != 0;
+                        int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetObjectIDSeperator));
+                        int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
+                        bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
+                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetObjectDataStartMark));
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataStartMark, Atlas.packetObjectDataTerminator);
+                        int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
+
+                        //Debugging
+                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
+
+                        //If it is our ID ignore
+                        if (Atlas.ID == senderID)
+                        {
+                            return;
+                        }
+
+                        //If safesend tell client we got it
+
+                        //Queue Work
+                        pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, localAuth, senderID, objID, objType, objData, objOwnerID, PendingWorkItem.WorkType.RIGIDBODYUPDATE));
+
 
                         break;
                     }
@@ -429,7 +458,7 @@ public class EZNetworking : MonoBehaviour
                         int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetObjectIDSeperator));
                         int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
                         bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
-                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator));
+                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetObjectDataStartMark));
                         string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataStartMark, Atlas.packetObjectDataTerminator); 
                         int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
 
@@ -446,6 +475,34 @@ public class EZNetworking : MonoBehaviour
 
                         //Queue Work
                         pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, localAuth, senderID, objID, objType, objData, objOwnerID, PendingWorkItem.WorkType.TRANSFORMUPDATE));
+
+
+                        break;
+                    }
+                case (int)Atlas.PACKETTYPE.RIGIDBODY:
+                    {
+                        //Decode Packet
+                        bool safeSendFlag = int.Parse(Atlas.extractStr(infoStr, Atlas.packetSafeSendSeperator, Atlas.packetClientIDSeperator)) != 0;
+                        int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetObjectIDSeperator));
+                        int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
+                        bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
+                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetObjectDataStartMark));
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataStartMark, Atlas.packetObjectDataTerminator);
+                        int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
+
+                        //Debugging
+                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
+
+                        //If it is our ID ignore
+                        if (Atlas.ID == senderID)
+                        {
+                            return;
+                        }
+
+                        //If safesend tell server we got it
+
+                        //Queue Work
+                        pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, localAuth, senderID, objID, objType, objData, objOwnerID, PendingWorkItem.WorkType.RIGIDBODYUPDATE));
 
 
                         break;
@@ -562,7 +619,7 @@ public class EZNetworking : MonoBehaviour
             {
                 //Spawn object, let network identity handle network
                 GameObject newObj = Instantiate(prefab, position, quaternion);
-                newObj.GetComponent<NetworkIdentity>().ObjectType = i - 1;
+                newObj.GetComponent<NetworkIdentity>().ObjectType = i;
                 newObj.GetComponent<NetworkIdentity>().IsOriginal();
                 newObj.GetComponent<NetworkIdentity>().ownerID = Atlas.ID;
                 //Add to our local objects since we instantiated it
@@ -609,18 +666,51 @@ public class EZNetworking : MonoBehaviour
             //If Object Doesn't Exist
             if (indexOfObj < 0)
             {
+                Debug.LogWarning("SPAWNING OBJ ID: " + (pendingWorkItems[i].objType).ToString() +" ["+ spawnableObjects[pendingWorkItems[i].objType].name +"]");
 
-                //Extract Raw Strings
-                string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
-                //Decode pos
-                Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
-                Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
-                Quaternion rot = Quaternion.Euler(Atlas.StringToVector3(dataStrArray[1]));
-                //Create the object locally
-                GameObject objRef = Instantiate(spawnableObjects[pendingWorkItems[i].objType - 1], pos, rot);
-                objRef.GetComponent<NetworkIdentity>().OverrideID(pendingWorkItems[i].objID);
-                //Assign owner ID
-                objRef.GetComponent<NetworkIdentity>().ownerID = pendingWorkItems[i].ownerID;
+                switch (pendingWorkItems[i].workType)
+                {
+                    case PendingWorkItem.WorkType.TRANSFORMUPDATE:
+                    {
+                            //Extract Raw Strings
+                            string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
+                            //Decode pos
+                            Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
+                            Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
+                            Quaternion rot = Quaternion.Euler(Atlas.StringToVector3(dataStrArray[1]));
+                            //Create the object locally
+                            GameObject objRef = Instantiate(spawnableObjects[pendingWorkItems[i].objType], pos, rot);
+                            objRef.GetComponent<NetworkIdentity>().OverrideID(pendingWorkItems[i].objID);
+                            //Assign owner ID
+                            objRef.GetComponent<NetworkIdentity>().ownerID = pendingWorkItems[i].ownerID;
+                            break;
+                    }
+                    case PendingWorkItem.WorkType.RIGIDBODYUPDATE:
+                        {
+                            //Extract Raw Strings
+                            string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
+                            //Decode pos
+                            Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
+                            Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
+                            Quaternion rot = Quaternion.Euler(Atlas.StringToVector3(dataStrArray[1]));
+                            Vector3 velo = Atlas.StringToVector3(dataStrArray[3]);
+                            Vector3 aVelo = Atlas.StringToVector3(dataStrArray[4]);
+                            //Create the object locally
+                            GameObject objRef = Instantiate(spawnableObjects[pendingWorkItems[i].objType], pos, rot);
+                            objRef.GetComponent<NetworkIdentity>().OverrideID(pendingWorkItems[i].objID);
+                            objRef.GetComponent<Rigidbody>().velocity = velo;
+                            objRef.GetComponent<Rigidbody>().angularVelocity = aVelo;
+                            //Assign owner ID
+                            objRef.GetComponent<NetworkIdentity>().ownerID = pendingWorkItems[i].ownerID;
+                            break;
+                        }
+                    default:
+                        {
+                            Debug.LogWarning("Unknown Work Type {"+ pendingWorkItems[i].workType.ToString()+"}");
+                            break;
+                        }
+                }
+                
             }
             //If Object Exists
             else
@@ -650,11 +740,38 @@ public class EZNetworking : MonoBehaviour
                                     else
                                     {
                                         objs[indexOfObj].gameObject.transform.position = pos;
+                                        objs[indexOfObj].gameObject.transform.rotation = rot;
+                                        objs[indexOfObj].gameObject.transform.localScale = scale;
                                     }
 
                                     break;
                                 }
+                            case PendingWorkItem.WorkType.RIGIDBODYUPDATE:
+                                {
+                                    //Extract Raw Strings
+                                    string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
 
+                                    Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
+                                    Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
+                                    Quaternion rot = Quaternion.Euler(Atlas.StringToVector3(dataStrArray[1]));
+                                    Vector3 velo = Atlas.StringToVector3(dataStrArray[3]);
+                                    Vector3 aVelo = Atlas.StringToVector3(dataStrArray[4]);
+
+                                    if (objs[indexOfObj].smoothMove)
+                                    {
+                                        objs[indexOfObj].UpdateTargets(pos, scale, rot, velo, aVelo);
+                                    }
+                                    else
+                                    {
+                                        objs[indexOfObj].gameObject.transform.position = pos;
+                                        objs[indexOfObj].gameObject.transform.rotation = rot;
+                                        objs[indexOfObj].gameObject.transform.localScale = scale;
+                                        objs[indexOfObj].GetComponent<Rigidbody>().velocity = velo;
+                                        objs[indexOfObj].GetComponent<Rigidbody>().angularVelocity = aVelo;
+                                    }
+
+                                    break;
+                                }
                             default:
                                 {
                                     Debug.LogWarning("Got a work item that cannot be understood as type of update is unknown");
@@ -693,11 +810,38 @@ public class EZNetworking : MonoBehaviour
                                     else
                                     {
                                         objs[indexOfObj].gameObject.transform.position = pos;
+                                        objs[indexOfObj].gameObject.transform.rotation = rot;
+                                        objs[indexOfObj].gameObject.transform.localScale = scale;
                                     }
                                 }
                                 break;
                             }
+                        case PendingWorkItem.WorkType.RIGIDBODYUPDATE:
+                            {
+                                //Extract Raw Strings
+                                string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
 
+                                Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
+                                Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
+                                Quaternion rot = Quaternion.Euler(Atlas.StringToVector3(dataStrArray[1]));
+                                Vector3 velo = Atlas.StringToVector3(dataStrArray[3]);
+                                Vector3 aVelo = Atlas.StringToVector3(dataStrArray[4]);
+
+                                if (objs[indexOfObj].smoothMove)
+                                {
+                                    objs[indexOfObj].UpdateTargets(pos, scale, rot, velo, aVelo);
+                                }
+                                else
+                                {
+                                    objs[indexOfObj].gameObject.transform.position = pos;
+                                    objs[indexOfObj].gameObject.transform.rotation = rot;
+                                    objs[indexOfObj].gameObject.transform.localScale = scale;
+                                    objs[indexOfObj].GetComponent<Rigidbody>().velocity = velo;
+                                    objs[indexOfObj].GetComponent<Rigidbody>().angularVelocity = aVelo;
+                                }
+
+                                break;
+                            }
                         default:
                             {
                                 Debug.LogWarning("Got a work item that cannot be understood as type of update is unknown");

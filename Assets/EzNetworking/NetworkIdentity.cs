@@ -33,6 +33,11 @@ public class NetworkIdentity : MonoBehaviour
     private Quaternion oldRot = Quaternion.identity;
     private Vector3 targetScale = Vector3.zero;
     private Vector3 oldScale = Vector3.zero;
+    private Vector3 oldVelo = Vector3.zero;
+    private Vector3 targetVelo = Vector3.zero;
+    private Vector3 oldAVelo = Vector3.zero;
+    private Vector3 targetAVelo = Vector3.zero;
+    private Rigidbody rb = null;
     private float t = 0.0f;
 
     public void updateID(int newID)
@@ -53,6 +58,22 @@ public class NetworkIdentity : MonoBehaviour
         targetScale = scale;
         oldRot = transform.rotation;
         targetRot = rot;
+
+        t = 0.0f;
+    }
+
+    public void UpdateTargets(Vector3 pos, Vector3 scale, Quaternion rot, Vector3 velo, Vector3 aVelo)
+    {
+        targetPos = pos;
+        oldPos = transform.position;
+        oldScale = transform.localScale;
+        targetScale = scale;
+        oldRot = transform.rotation;
+        targetRot = rot;
+        oldVelo = rb.velocity;
+        targetVelo = velo;
+        oldAVelo = rb.angularVelocity;
+        targetAVelo = aVelo;
 
         t = 0.0f;
     }
@@ -84,7 +105,22 @@ public class NetworkIdentity : MonoBehaviour
 
     void RigidbodyLogic()
     {
+        //Pack infomation
+        //SAFESEND+CLIENTID+OBJID+LOCALPLAYERAUTH+OBJTYPE+D_START+DATA+D_END+OWNERID+P_END
+        string data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetObjectIDSeperator + ObjectID.ToString() + Atlas.packetObjectLocalAuthSeperator + (Convert.ToInt32(localPlayerAuthority)).ToString() + Atlas.packetObjectTypeSeperator + ObjectType.ToString() + Atlas.packetObjectDataStartMark + transform.position.ToString() + Atlas.packetObjectDataSeperator + transform.rotation.eulerAngles.ToString() + Atlas.packetObjectDataSeperator + transform.localScale.ToString() + Atlas.packetObjectDataSeperator + rb.velocity.ToString() + Atlas.packetObjectDataSeperator + rb.angularVelocity.ToString() + Atlas.packetObjectDataTerminator + Atlas.packetOwnerSeperator + ownerID.ToString() + Atlas.packetTerminator;
 
+        //Encode for network
+        byte[] networkData = Encoding.ASCII.GetBytes(data);
+
+        //Send infomation
+        if (safeSend)
+        {
+            networkController.SafeSend(Atlas.PACKETTYPE.RIGIDBODY, networkData, null, true);
+        }
+        else
+        {
+            networkController.Send(Atlas.PACKETTYPE.RIGIDBODY, networkData, null, true);
+        }
     }
 
     public void IsOriginal()
@@ -116,18 +152,51 @@ public class NetworkIdentity : MonoBehaviour
 
         //Send our info on spawn
         currentTime = networkUpdateRate;
+
+        //Get additional components that we need for our type
+        switch (type)
+        {
+            case Atlas.NETWORKOBJTYPE.BASIC:
+                { 
+                    break;
+                }
+            case Atlas.NETWORKOBJTYPE.TRANSFORM:
+                {
+                    break;
+                }
+            case Atlas.NETWORKOBJTYPE.RIGIDBODY:
+                {
+                    rb = GetComponent<Rigidbody>();
+                    break;
+                }
+            default:
+                break;
+        }
     }
 
     //Update Loop Tied to Our Fixed Update Info
     void FixedUpdate()
     {
         //Lerp Movement
-        if (smoothMove && ((Atlas.isClient && ((!localPlayerAuthority && ownerID == Atlas.ID) || (localPlayerAuthority && ownerID != Atlas.ID))) || (Atlas.isServer && ownerID != Atlas.ID)))
+        if (smoothMove && ((type == Atlas.NETWORKOBJTYPE.TRANSFORM) || (type == Atlas.NETWORKOBJTYPE.RIGIDBODY)) && ((Atlas.isClient && ((!localPlayerAuthority && ownerID == Atlas.ID) || (localPlayerAuthority && ownerID != Atlas.ID))) || (Atlas.isServer && ownerID != Atlas.ID)))
         {
             t += Time.deltaTime / smoothMoveDuration;
             transform.position = Vector3.Lerp(oldPos, targetPos, t);
             transform.localScale = Vector3.Lerp(oldScale, targetScale, t);
             transform.rotation = Quaternion.Lerp(oldRot, targetRot, t);
+
+            switch (type)
+            {
+                case Atlas.NETWORKOBJTYPE.RIGIDBODY:
+                    {
+                        rb.velocity = Vector3.Lerp(oldVelo, targetVelo, t);
+                        rb.angularVelocity = Vector3.Lerp(oldAVelo, targetAVelo, t);
+                        break;
+                    }
+                default:
+                    break;
+            }
+
         }
 
         //override ID

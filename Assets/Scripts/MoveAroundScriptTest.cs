@@ -22,7 +22,7 @@ public class MoveAroundScriptTest : MonoBehaviour
 
     private void Update()
     {
-        if (Atlas.isClient)
+        if (Atlas.isServer)
         {
             if (GetComponent<NetworkIdentity>().ownerID == Atlas.ID)
             {
