@@ -610,7 +610,7 @@ public class EZNetworking : MonoBehaviour
         mainClientThread.Start();
     }
 
-    public void Spawn(GameObject prefab, Vector3 position, Quaternion quaternion)
+    public GameObject Spawn(GameObject prefab, Vector3 position, Quaternion quaternion)
     {
         //Check if prefab is in spawnable list
         for (int i = 0; i < spawnableObjects.Count; i++)
@@ -624,10 +624,11 @@ public class EZNetworking : MonoBehaviour
                 newObj.GetComponent<NetworkIdentity>().ownerID = Atlas.ID;
                 //Add to our local objects since we instantiated it
                 localObjs.Add(newObj);
-                return;
+                return newObj;
             }
         }
         Debug.LogWarning("Attempted to spawn an object that isn't in the spawnable objects list, ignoring...");
+        return null;
     }
 
     //Assign ids that are in the pending list
