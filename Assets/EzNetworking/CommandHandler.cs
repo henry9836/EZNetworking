@@ -18,7 +18,6 @@ public class CommandHandler : MonoBehaviour
         {
             case COMMANDTYPE.TESTING:
                 {
-                    Debug.LogError("Testing 123 123 :D : data is size of " + data.Length);
                     for (int i = 0; i < data.Length - 1; i++)
                     {
                         Debug.LogError("data["+i.ToString()+"] " + data[i]);

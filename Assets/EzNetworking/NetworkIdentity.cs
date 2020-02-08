@@ -156,14 +156,6 @@ public class NetworkIdentity : MonoBehaviour
         //Get additional components that we need for our type
         switch (type)
         {
-            case Atlas.NETWORKOBJTYPE.BASIC:
-                { 
-                    break;
-                }
-            case Atlas.NETWORKOBJTYPE.TRANSFORM:
-                {
-                    break;
-                }
             case Atlas.NETWORKOBJTYPE.RIGIDBODY:
                 {
                     rb = GetComponent<Rigidbody>();

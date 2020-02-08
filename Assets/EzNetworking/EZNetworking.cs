@@ -601,6 +601,9 @@ public class EZNetworking : MonoBehaviour
                             return;
                         }
 
+                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
+
+
                         //If safesend tell server we got it
 
                         //Queue Work
@@ -627,6 +630,7 @@ public class EZNetworking : MonoBehaviour
                         }
 
                         //If safesend tell server we got it
+                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
 
                         //Queue Work
                         pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, localAuth, senderID, objID, objType, objData, objOwnerID, PendingWorkItem.WorkType.RIGIDBODYUPDATE));
@@ -792,9 +796,6 @@ public class EZNetworking : MonoBehaviour
 
     void WorkThroughObjQueue(NetworkIdentity[] objs)
     {
-
-        
-
         for (int i = 0; i < pendingWorkItems.Count; i++)
         {
             //Find object
@@ -802,7 +803,6 @@ public class EZNetworking : MonoBehaviour
 
             for (int j = 0; j < objs.Length; j++)
             {
-                Debug.LogError("Looking if ID: " + objs[j].ObjectID + " = " + pendingWorkItems[i].objID);
                 //If we can find a obj with the same id, it already exists
                 if (objs[j].ObjectID == pendingWorkItems[i].objID)
                 {
@@ -814,6 +814,8 @@ public class EZNetworking : MonoBehaviour
             //If Object Doesn't Exist
             if (indexOfObj < 0)
             {
+                Debug.LogWarning("Object with an Type of: " + pendingWorkItems[i].objType + " doesn't exist spawning new obj");
+
                 switch (pendingWorkItems[i].workType)
                 {
                     case PendingWorkItem.WorkType.TRANSFORMUPDATE:
@@ -827,7 +829,7 @@ public class EZNetworking : MonoBehaviour
                             //Create the object locally
                             GameObject objRef = Instantiate(spawnableObjects[pendingWorkItems[i].objType], pos, rot);
                             objRef.GetComponent<NetworkIdentity>().OverrideID(pendingWorkItems[i].objID);
-                            //Assign owner ID
+                            objRef.GetComponent<NetworkIdentity>().ObjectType = pendingWorkItems[i].objType;
                             objRef.GetComponent<NetworkIdentity>().ownerID = pendingWorkItems[i].ownerID;
                             break;
                     }
@@ -841,14 +843,12 @@ public class EZNetworking : MonoBehaviour
                             Quaternion rot = Quaternion.Euler(Atlas.StringToVector3(dataStrArray[1]));
                             Vector3 velo = Atlas.StringToVector3(dataStrArray[3]);
                             Vector3 aVelo = Atlas.StringToVector3(dataStrArray[4]);
-                            //Create the object locally
-                            Debug.LogError("ASKING FOR OBJECT TO SPAWN AS: " + (int)pendingWorkItems[i].objType);
-                            Debug.LogError("OBJECT IS: " + spawnableObjects[pendingWorkItems[i].objType].name);
+                            //Create the object locally and assign vars
                             GameObject objRef = Instantiate(spawnableObjects[pendingWorkItems[i].objType], pos, rot);
                             objRef.GetComponent<NetworkIdentity>().OverrideID(pendingWorkItems[i].objID);
                             objRef.GetComponent<Rigidbody>().velocity = velo;
                             objRef.GetComponent<Rigidbody>().angularVelocity = aVelo;
-                            //Assign owner ID
+                            objRef.GetComponent<NetworkIdentity>().ObjectType = pendingWorkItems[i].objType;
                             objRef.GetComponent<NetworkIdentity>().ownerID = pendingWorkItems[i].ownerID;
                             break;
                         }
