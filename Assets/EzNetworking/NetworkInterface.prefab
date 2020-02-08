@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9015274234733472923}
   - component: {fileID: 9015274235561603094}
+  - component: {fileID: 7775677950612012468}
   m_Layer: 0
   m_Name: NetworkInterface
   m_TagString: Untagged
@@ -43,8 +44,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e0e66e4d3de9804a93c4fae125b65ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  reapeatSendCount: 3
+  SafeSendRepeatCount: 3
   maxRetryCount: 5
   timeoutThreshold: 5
   port: 13371
   targetIP: 127.0.0.1
+  spawnableObjects: []
+--- !u!114 &7775677950612012468
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9015274234733472922}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e705236220d0ff94287b4c64651e69e5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

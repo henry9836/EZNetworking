@@ -62,6 +62,31 @@ public class EZNetworking : MonoBehaviour
 
     }
 
+    class PendingCommand
+    {
+        public PendingCommand(string _data, bool _safeSend, bool srv)
+        {
+            data = _data;
+            safeSend = _safeSend;
+            forServerOnly = srv;
+        }
+
+        public PendingCommand(string _data, bool _safeSend, int _target, bool srv)
+        {
+            data = _data;
+            target = _target;
+            safeSend = _safeSend;
+            forServerOnly = srv;
+        }
+
+
+        public CommandHandler.COMMANDTYPE type = CommandHandler.COMMANDTYPE.UNASSIGNED;
+        public int target = -1;
+        public string data = "";
+        public bool safeSend = false;
+        public bool forServerOnly = false;
+    };
+
     //Publics
     [Range(1, 10)]
     public int SafeSendRepeatCount = 3;
@@ -72,11 +97,13 @@ public class EZNetworking : MonoBehaviour
     public int port = 13371;
     public string targetIP = "127.0.0.1";
     public List<GameObject> spawnableObjects = new List<GameObject>();
+    public bool debugPackets = false;
 
     //Privates
     private List<Atlas.ClientObject> clients = new List<Atlas.ClientObject>();
     private List<PendingID> pendingIDObjects = new List<PendingID>();
     private List<PendingWorkItem> pendingWorkItems = new List<PendingWorkItem>();
+    private List<PendingCommand> pendingCommands = new List<PendingCommand>();
     private List<GameObject> localObjs = new List<GameObject>();
     private IPEndPoint listenPoint;
     private UdpClient network;
@@ -85,7 +112,79 @@ public class EZNetworking : MonoBehaviour
     private int NextNetID = 1;
 
     
-         
+    public void sendCommand(CommandHandler.COMMANDTYPE cmdType, string data, bool safeSend, bool targetIsServer)
+    {
+        if (Atlas.isClient && Atlas.networkAuthed && Atlas.networkActive)
+        {
+            //Build Packet
+            //SAFESEND+CLIENTID+D_START+TYPE+DATA+D_END+FORSERVER+P_END
+            data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetDataStartMark + ((int)cmdType).ToString() + Atlas.packetDataSeperator + data + Atlas.packetDataTerminator + Atlas.packetForSrvSeperator + (Convert.ToInt32(targetIsServer)).ToString() + Atlas.packetTerminator;
+
+            Debug.LogWarning("Sending: " + data);
+
+            //Send Packet
+            if (safeSend)
+            {
+                SafeSend(Atlas.PACKETTYPE.COMMAND, Encoding.ASCII.GetBytes(data), null, true);
+            }
+            else
+            {
+                Send(Atlas.PACKETTYPE.COMMAND, Encoding.ASCII.GetBytes(data), null, true);
+            }
+        }
+        else if (Atlas.isServer)
+        {
+            //Build Pending Command
+            //TYPE+DATA
+            data = ((int)cmdType).ToString() + Atlas.packetDataSeperator + data;
+            pendingCommands.Add(new PendingCommand(data, safeSend, targetIsServer));
+        }
+    }
+
+    public void sendCommand(CommandHandler.COMMANDTYPE cmdType, string data, int targetID, bool safeSend, bool targetIsServer)
+    {
+        
+        if (Atlas.isClient && Atlas.networkAuthed && Atlas.networkActive)
+        {
+            //Build Packet
+            //SAFESEND+CLIENTID+TARGETID+D_START+TYPE+DATA+D_END+FORSERVER+P_END
+            data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetTargetIDSeperator + targetID.ToString() + Atlas.packetDataStartMark + ((int)cmdType).ToString() + Atlas.packetDataSeperator + data + Atlas.packetDataTerminator + Atlas.packetForSrvSeperator + (Convert.ToInt32(targetIsServer)).ToString() + Atlas.packetTerminator;
+
+            Debug.LogWarning("Sending: " + data);
+
+            //Send Packet
+            if (safeSend)
+            {
+                SafeSend(Atlas.PACKETTYPE.TARCOMMAND, Encoding.ASCII.GetBytes(data), null, true);
+            }
+            else
+            {
+                Send(Atlas.PACKETTYPE.TARCOMMAND, Encoding.ASCII.GetBytes(data), null, true);
+            }
+        }
+        else if (Atlas.isServer)
+        {
+            //Build Pending Command
+            //TYPE+DATA
+            data = ((int)cmdType).ToString() + Atlas.packetDataSeperator + data;
+            pendingCommands.Add(new PendingCommand(data, safeSend, targetID, targetIsServer));
+        }
+    }
+
+    //Fix Missing Object Type
+    public int FixObjectID(GameObject obj)
+    {
+        for (int i = 0; i < spawnableObjects.Count; i++)
+        {
+            if (spawnableObjects[i] == obj)
+            {
+                return i;
+            }
+        }
+
+        Debug.LogWarning("Cannot Fix Object Type ID for gameobject: " + obj.name + " try assigning the gameobject as a spawnable prefab in the Network Interface");
+        return -1;
+    }
 
     //Assign Target IP
     public void AssignIP(string newIP)
@@ -150,7 +249,6 @@ public class EZNetworking : MonoBehaviour
                 //Send to everyone
                 for (int i = 0; i < clients.Count; i++)
                 {
-                    Debug.LogWarning("Sending packet to: " + clients[i].clientEP.Address.ToString() + "["+i.ToString()+"]");
                     network.Send(packet, packet.Length, clients[i].clientEP);
                 }
             }
@@ -282,7 +380,6 @@ public class EZNetworking : MonoBehaviour
 
         //Decode Data Type
         string dataStr = Encoding.ASCII.GetString(data);
-        Debug.Log("Server Received: " + dataStr);
 
         int cutPosition = dataStr.IndexOf(Atlas.packetTypeSeperator);
 
@@ -290,8 +387,10 @@ public class EZNetworking : MonoBehaviour
         {
             int type = int.Parse(dataStr.Substring(0, cutPosition));
             string infoStr = dataStr.Substring(cutPosition+Atlas.packetTypeSeperator.Length);
-
-            Debug.Log("Infomation: type{" + type.ToString() +"} infomation: " + infoStr);
+            if (debugPackets)
+            {
+                Debug.Log("Infomation: type{" + type.ToString() + "} infomation: " + infoStr);
+            }
 
             //Check Client For Weird Behaviour
             if (client.authState != Atlas.ClientObject.AUTHTYPE.HANDSHAKE_SUCCEED && type != (int)Atlas.PACKETTYPE.HANDSHAKEACKREQ)
@@ -328,8 +427,8 @@ public class EZNetworking : MonoBehaviour
                         int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetObjectIDSeperator));
                         int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
                         bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
-                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetObjectDataStartMark));
-                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataStartMark, Atlas.packetObjectDataTerminator);
+                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetDataStartMark));
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetDataStartMark, Atlas.packetDataTerminator);
                         int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
 
                         //Debugging
@@ -340,9 +439,6 @@ public class EZNetworking : MonoBehaviour
                         {
                             return;
                         }
-
-                        
-
                         //If safesend tell client we got it
 
                         //Queue Work
@@ -357,8 +453,8 @@ public class EZNetworking : MonoBehaviour
                         int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetObjectIDSeperator));
                         int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
                         bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
-                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetObjectDataStartMark));
-                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataStartMark, Atlas.packetObjectDataTerminator);
+                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetDataStartMark));
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetDataStartMark, Atlas.packetDataTerminator);
                         int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
 
                         //Debugging
@@ -375,6 +471,47 @@ public class EZNetworking : MonoBehaviour
                         //Queue Work
                         pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, localAuth, senderID, objID, objType, objData, objOwnerID, PendingWorkItem.WorkType.RIGIDBODYUPDATE));
 
+
+                        break;
+                    }
+                case (int)Atlas.PACKETTYPE.COMMAND:
+                    {
+                        //Decode Packet
+                        //SAFESEND+CLIENTID+D_START+TYPE+DATA+D_END+P_END
+                        bool safeSendFlag = int.Parse(Atlas.extractStr(infoStr, Atlas.packetSafeSendSeperator, Atlas.packetClientIDSeperator)) != 0;
+                        int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetDataStartMark));
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetDataStartMark, Atlas.packetDataTerminator);
+                        bool srvFlag = int.Parse(Atlas.extractStr(infoStr, Atlas.packetForSrvSeperator, Atlas.packetTerminator)) != 0;
+
+                        //If it is our ID ignore
+                        if (Atlas.ID == senderID)
+                        {
+                            return;
+                        }
+
+                        //Queue Work
+                        pendingCommands.Add(new PendingCommand(objData, safeSendFlag, srvFlag));
+
+                        break;
+                    }
+                case (int)Atlas.PACKETTYPE.TARCOMMAND:
+                    {
+                        //Decode Packet
+                        //SAFESEND+CLIENTID+TARGETID+D_START+TYPE+DATA+D_END+P_END
+                        bool safeSendFlag = int.Parse(Atlas.extractStr(infoStr, Atlas.packetSafeSendSeperator, Atlas.packetClientIDSeperator)) != 0;
+                        int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetTargetIDSeperator));
+                        int targetID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetTargetIDSeperator, Atlas.packetDataStartMark));
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetDataStartMark, Atlas.packetDataTerminator);
+                        bool srvFlag = int.Parse(Atlas.extractStr(infoStr, Atlas.packetForSrvSeperator, Atlas.packetTerminator)) != 0;
+
+                        //If it is our ID ignore
+                        if (Atlas.ID == senderID)
+                        {
+                            return;
+                        }
+
+                        //Queue Work
+                        pendingCommands.Add(new PendingCommand(objData, safeSendFlag, targetID, srvFlag));
 
                         break;
                     }
@@ -437,7 +574,6 @@ public class EZNetworking : MonoBehaviour
                         int newID = int.Parse(infoStr.Substring(newPos + 1));
 
                         //Find the Object with the tempID and replace tempID
-                        Debug.Log("OLDID: " + oldID.ToString() + " NEWID: " + newID);
                         for (int i = 0; i < pendingIDObjects.Count; i++)
                         {
                             if (pendingIDObjects[i].oldID == oldID)
@@ -446,9 +582,6 @@ public class EZNetworking : MonoBehaviour
                                 return;
                             }
                         }
-                        Debug.Log("DEBUG END");
-                        Debug.LogError("Cannot find the gameobject with the ID the server gave to us {" + oldID.ToString() + "}");
-
                         break;
                     }
                 case (int)Atlas.PACKETTYPE.TRANSFORM:
@@ -458,12 +591,9 @@ public class EZNetworking : MonoBehaviour
                         int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetObjectIDSeperator));
                         int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
                         bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
-                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetObjectDataStartMark));
-                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataStartMark, Atlas.packetObjectDataTerminator); 
+                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetDataStartMark));
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetDataStartMark, Atlas.packetDataTerminator); 
                         int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
-
-                        //Debugging
-                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
 
                         //If it is our ID ignore
                         if (Atlas.ID == senderID)
@@ -486,12 +616,9 @@ public class EZNetworking : MonoBehaviour
                         int senderID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetClientIDSeperator, Atlas.packetObjectIDSeperator));
                         int objID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectIDSeperator, Atlas.packetObjectLocalAuthSeperator));
                         bool localAuth = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectLocalAuthSeperator, Atlas.packetObjectTypeSeperator)) != 0;
-                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetObjectDataStartMark));
-                        string objData = Atlas.extractStr(infoStr, Atlas.packetObjectDataStartMark, Atlas.packetObjectDataTerminator);
+                        int objType = int.Parse(Atlas.extractStr(infoStr, Atlas.packetObjectTypeSeperator, Atlas.packetDataStartMark));
+                        string objData = Atlas.extractStr(infoStr, Atlas.packetDataStartMark, Atlas.packetDataTerminator);
                         int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
-
-                        //Debugging
-                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
 
                         //If it is our ID ignore
                         if (Atlas.ID == senderID)
@@ -503,6 +630,20 @@ public class EZNetworking : MonoBehaviour
 
                         //Queue Work
                         pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, localAuth, senderID, objID, objType, objData, objOwnerID, PendingWorkItem.WorkType.RIGIDBODYUPDATE));
+
+
+                        break;
+                    }
+                case (int)Atlas.PACKETTYPE.COMMAND:
+                case (int)Atlas.PACKETTYPE.TARCOMMAND:
+                    {
+
+                        //Decode Packet
+                        string cmdData = Atlas.extractStr(infoStr, Atlas.packetDataStartMark, Atlas.packetDataTerminator);
+
+                        bool safeSendFlag = int.Parse(Atlas.extractStr(infoStr, Atlas.packetSafeSendSeperator, Atlas.packetDataStartMark)) != 0;
+
+                        pendingCommands.Add(new PendingCommand(cmdData, safeSendFlag, false));
 
 
                         break;
@@ -639,15 +780,20 @@ public class EZNetworking : MonoBehaviour
             if (pendingIDObjects[i].newID > 0)
             {
                 //Assign new Network ID
-                pendingIDObjects[i].refgameobject.GetComponent<NetworkIdentity>().updateID(pendingIDObjects[i].newID);
+                if (pendingIDObjects[i].refgameobject != null)
+                {
+                    pendingIDObjects[i].refgameobject.GetComponent<NetworkIdentity>().updateID(pendingIDObjects[i].newID);
+                }
                 //Remove Pending ID
                 pendingIDObjects.RemoveAt(i);
             }
         }
     }
 
-    void WorkThroughQueue(NetworkIdentity[] objs)
+    void WorkThroughObjQueue(NetworkIdentity[] objs)
     {
+
+        
 
         for (int i = 0; i < pendingWorkItems.Count; i++)
         {
@@ -656,6 +802,7 @@ public class EZNetworking : MonoBehaviour
 
             for (int j = 0; j < objs.Length; j++)
             {
+                Debug.LogError("Looking if ID: " + objs[j].ObjectID + " = " + pendingWorkItems[i].objID);
                 //If we can find a obj with the same id, it already exists
                 if (objs[j].ObjectID == pendingWorkItems[i].objID)
                 {
@@ -667,14 +814,12 @@ public class EZNetworking : MonoBehaviour
             //If Object Doesn't Exist
             if (indexOfObj < 0)
             {
-                Debug.LogWarning("SPAWNING OBJ ID: " + (pendingWorkItems[i].objType).ToString() +" ["+ spawnableObjects[pendingWorkItems[i].objType].name +"]");
-
                 switch (pendingWorkItems[i].workType)
                 {
                     case PendingWorkItem.WorkType.TRANSFORMUPDATE:
                     {
                             //Extract Raw Strings
-                            string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
+                            string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetDataSeperator }, StringSplitOptions.None);
                             //Decode pos
                             Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
                             Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
@@ -689,7 +834,7 @@ public class EZNetworking : MonoBehaviour
                     case PendingWorkItem.WorkType.RIGIDBODYUPDATE:
                         {
                             //Extract Raw Strings
-                            string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
+                            string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetDataSeperator }, StringSplitOptions.None);
                             //Decode pos
                             Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
                             Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
@@ -697,6 +842,8 @@ public class EZNetworking : MonoBehaviour
                             Vector3 velo = Atlas.StringToVector3(dataStrArray[3]);
                             Vector3 aVelo = Atlas.StringToVector3(dataStrArray[4]);
                             //Create the object locally
+                            Debug.LogError("ASKING FOR OBJECT TO SPAWN AS: " + (int)pendingWorkItems[i].objType);
+                            Debug.LogError("OBJECT IS: " + spawnableObjects[pendingWorkItems[i].objType].name);
                             GameObject objRef = Instantiate(spawnableObjects[pendingWorkItems[i].objType], pos, rot);
                             objRef.GetComponent<NetworkIdentity>().OverrideID(pendingWorkItems[i].objID);
                             objRef.GetComponent<Rigidbody>().velocity = velo;
@@ -728,7 +875,7 @@ public class EZNetworking : MonoBehaviour
                             case PendingWorkItem.WorkType.TRANSFORMUPDATE:
                                 {
                                     //Extract Raw Strings
-                                    string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
+                                    string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetDataSeperator }, StringSplitOptions.None);
 
                                     Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
                                     Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
@@ -750,7 +897,7 @@ public class EZNetworking : MonoBehaviour
                             case PendingWorkItem.WorkType.RIGIDBODYUPDATE:
                                 {
                                     //Extract Raw Strings
-                                    string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
+                                    string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetDataSeperator }, StringSplitOptions.None);
 
                                     Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
                                     Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
@@ -798,7 +945,7 @@ public class EZNetworking : MonoBehaviour
                                 if (!objs[i].localPlayerAuthority || (objs[i].localPlayerAuthority && (objs[i].ownerID != Atlas.ID)))
                                 {
                                     //Extract Raw Strings
-                                    string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
+                                    string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetDataSeperator }, StringSplitOptions.None);
 
                                     Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
                                     Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
@@ -820,7 +967,7 @@ public class EZNetworking : MonoBehaviour
                         case PendingWorkItem.WorkType.RIGIDBODYUPDATE:
                             {
                                 //Extract Raw Strings
-                                string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetObjectDataSeperator }, StringSplitOptions.None);
+                                string[] dataStrArray = pendingWorkItems[i].objData.Split(new string[] { Atlas.packetDataSeperator }, StringSplitOptions.None);
 
                                 Vector3 pos = Atlas.StringToVector3(dataStrArray[0]);
                                 Vector3 scale = Atlas.StringToVector3(dataStrArray[2]);
@@ -858,6 +1005,82 @@ public class EZNetworking : MonoBehaviour
 
         }
 
+    }
+
+    void WorkThroughCmdQueue()
+    {
+        for (int i = 0; i < pendingCommands.Count; i++)
+        {
+            //Get Type
+            //Extract Raw Strings
+            string[] dataStrArray = pendingCommands[i].data.Split(new string[] { Atlas.packetDataSeperator }, StringSplitOptions.None);
+
+            CommandHandler.COMMANDTYPE type = (CommandHandler.COMMANDTYPE)int.Parse(dataStrArray[0]);
+
+            //Server Logic
+            if (Atlas.isServer)
+            {
+                //If this is only meant for the server execute locally on server
+                if (pendingCommands[i].forServerOnly)
+                {
+                    if (Atlas.isServer)
+                    {
+                        GetComponent<CommandHandler>().runCommand(type, dataStrArray);
+                    }
+                }
+                //pass it onto target (and not zero as that is the server)
+                else if (pendingCommands[i].target > 0)
+                {
+                    //Find and send to client
+                    for (int j = 0; j < clients.Count; j++)
+                    {
+                        //Found match
+                        if (clients[j].ID == pendingCommands[i].target)
+                        {
+                            //Build packet
+                            string packet = Atlas.packetSafeSendSeperator + (Convert.ToInt32(pendingCommands[i].safeSend)).ToString() + Atlas.packetDataStartMark + pendingCommands[i].data + Atlas.packetDataTerminator + Atlas.packetTerminator;
+
+
+                            if (pendingCommands[i].safeSend)
+                            {
+                                SafeSend(Atlas.PACKETTYPE.TARCOMMAND, Encoding.ASCII.GetBytes(packet), clients[j].clientEP, false);
+                            }
+                            else
+                            {
+                                Send(Atlas.PACKETTYPE.TARCOMMAND, Encoding.ASCII.GetBytes(packet), clients[j].clientEP, false);
+                            }
+                            break;
+                        }
+                    }
+                }
+                //execute command and pass it onto all other clients
+                else
+                {
+                    GetComponent<CommandHandler>().runCommand(type, dataStrArray);
+
+                    //Build packet
+                    string packet = Atlas.packetSafeSendSeperator + (Convert.ToInt32(pendingCommands[i].safeSend)).ToString() + Atlas.packetDataStartMark + pendingCommands[i].data + Atlas.packetDataTerminator + Atlas.packetTerminator;
+
+                    if (pendingCommands[i].safeSend)
+                    {
+                        SafeSend(Atlas.PACKETTYPE.COMMAND, Encoding.ASCII.GetBytes(packet), null, true);
+                    }
+                    else
+                    {
+                        Send(Atlas.PACKETTYPE.COMMAND, Encoding.ASCII.GetBytes(packet), null, true);
+                    }
+                }
+            }
+            //Client Logic
+            else
+            {
+                Debug.LogError("Running command: " + dataStrArray[0]);
+                GetComponent<CommandHandler>().runCommand(type, dataStrArray);
+            }
+
+            //Remove from list
+            pendingCommands.RemoveAt(i);
+        }
     }
 
     void RemoveDupes(NetworkIdentity[] objs)
@@ -909,8 +1132,9 @@ public class EZNetworking : MonoBehaviour
             NetworkIdentity[] objs = GameObject.FindObjectsOfType<NetworkIdentity>();
 
             AssignPendingIDs();
-            WorkThroughQueue(objs);
+            WorkThroughObjQueue(objs);
             RemoveDupes(objs);
+            WorkThroughCmdQueue();
         }
     }
 }
