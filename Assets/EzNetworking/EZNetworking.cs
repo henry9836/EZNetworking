@@ -7,6 +7,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(CommandHandler))]
 public class EZNetworking : MonoBehaviour
 {
     //Pending ID Class to be used for queuing Obj IDs
