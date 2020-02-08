@@ -87,7 +87,7 @@ public class NetworkIdentity : MonoBehaviour
     {
         //Pack infomation
         //SAFESEND+CLIENTID+OBJID+LOCALPLAYERAUTH+OBJTYPE+D_START+DATA+D_END+OWNERID+P_END
-        string data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetObjectIDSeperator + ObjectID.ToString() + Atlas.packetObjectLocalAuthSeperator + (Convert.ToInt32(localPlayerAuthority)).ToString() + Atlas.packetObjectTypeSeperator + ObjectType.ToString() + Atlas.packetObjectDataStartMark + transform.position.ToString() + Atlas.packetObjectDataSeperator + transform.rotation.eulerAngles.ToString() + Atlas.packetObjectDataSeperator + transform.localScale.ToString() + Atlas.packetObjectDataTerminator + Atlas.packetOwnerSeperator + ownerID.ToString() + Atlas.packetTerminator;
+        string data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetObjectIDSeperator + ObjectID.ToString() + Atlas.packetObjectLocalAuthSeperator + (Convert.ToInt32(localPlayerAuthority)).ToString() + Atlas.packetObjectTypeSeperator + ObjectType.ToString() + Atlas.packetDataStartMark + transform.position.ToString() + Atlas.packetDataSeperator + transform.rotation.eulerAngles.ToString() + Atlas.packetDataSeperator + transform.localScale.ToString() + Atlas.packetDataTerminator + Atlas.packetOwnerSeperator + ownerID.ToString() + Atlas.packetTerminator;
 
         //Encode for network
         byte[] networkData = Encoding.ASCII.GetBytes(data);
@@ -107,7 +107,7 @@ public class NetworkIdentity : MonoBehaviour
     {
         //Pack infomation
         //SAFESEND+CLIENTID+OBJID+LOCALPLAYERAUTH+OBJTYPE+D_START+DATA+D_END+OWNERID+P_END
-        string data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetObjectIDSeperator + ObjectID.ToString() + Atlas.packetObjectLocalAuthSeperator + (Convert.ToInt32(localPlayerAuthority)).ToString() + Atlas.packetObjectTypeSeperator + ObjectType.ToString() + Atlas.packetObjectDataStartMark + transform.position.ToString() + Atlas.packetObjectDataSeperator + transform.rotation.eulerAngles.ToString() + Atlas.packetObjectDataSeperator + transform.localScale.ToString() + Atlas.packetObjectDataSeperator + rb.velocity.ToString() + Atlas.packetObjectDataSeperator + rb.angularVelocity.ToString() + Atlas.packetObjectDataTerminator + Atlas.packetOwnerSeperator + ownerID.ToString() + Atlas.packetTerminator;
+        string data = Atlas.packetSafeSendSeperator + (Convert.ToInt32(safeSend)).ToString() + Atlas.packetClientIDSeperator + Atlas.ID.ToString() + Atlas.packetObjectIDSeperator + ObjectID.ToString() + Atlas.packetObjectLocalAuthSeperator + (Convert.ToInt32(localPlayerAuthority)).ToString() + Atlas.packetObjectTypeSeperator + ObjectType.ToString() + Atlas.packetDataStartMark + transform.position.ToString() + Atlas.packetDataSeperator + transform.rotation.eulerAngles.ToString() + Atlas.packetDataSeperator + transform.localScale.ToString() + Atlas.packetDataSeperator + rb.velocity.ToString() + Atlas.packetDataSeperator + rb.angularVelocity.ToString() + Atlas.packetDataTerminator + Atlas.packetOwnerSeperator + ownerID.ToString() + Atlas.packetTerminator;
 
         //Encode for network
         byte[] networkData = Encoding.ASCII.GetBytes(data);
@@ -156,14 +156,6 @@ public class NetworkIdentity : MonoBehaviour
         //Get additional components that we need for our type
         switch (type)
         {
-            case Atlas.NETWORKOBJTYPE.BASIC:
-                { 
-                    break;
-                }
-            case Atlas.NETWORKOBJTYPE.TRANSFORM:
-                {
-                    break;
-                }
             case Atlas.NETWORKOBJTYPE.RIGIDBODY:
                 {
                     rb = GetComponent<Rigidbody>();
@@ -220,47 +212,58 @@ public class NetworkIdentity : MonoBehaviour
                     //Less than 0 means no valid network ID
                     if (ObjectID > 0)
                     {
-                        //Check if we know who owns us
-                        if (ownerID >= 0) {
-                            //Check for invalid or strange configs
-                            if ((Atlas.isClient && localPlayerAuthority && isOriginal) || (Atlas.isServer && !serverOnlyObject))
+                        if (ObjectType > -1)
+                        {
+                            //Check if we know who owns us
+                            if (ownerID >= 0)
                             {
-                                //Carry out an action based on our type
-                                switch (type)
-                                {
-                                    case Atlas.NETWORKOBJTYPE.BASIC:
-                                        {
-                                            BasicLogic();
-                                            break;
-                                        }
-                                    case Atlas.NETWORKOBJTYPE.TRANSFORM:
-                                        {
-                                            TransformLogic();
-                                            break;
-                                        }
-                                    case Atlas.NETWORKOBJTYPE.RIGIDBODY:
-                                        {
-                                            RigidbodyLogic();
-                                            break;
-                                        }
-                                    default:
-                                        {
-                                            Debug.LogWarning("Could not determine type for Network Identity");
-                                            break;
-                                        }
-                                }
 
-                                //reset timer
-                                currentTime = 0.0f;
+
+                                //Check for invalid or strange configs
+                                if ((Atlas.isClient && localPlayerAuthority && isOriginal) || (Atlas.isServer && !serverOnlyObject))
+                                {
+                                    //Carry out an action based on our type
+                                    switch (type)
+                                    {
+                                        case Atlas.NETWORKOBJTYPE.BASIC:
+                                            {
+                                                BasicLogic();
+                                                break;
+                                            }
+                                        case Atlas.NETWORKOBJTYPE.TRANSFORM:
+                                            {
+                                                TransformLogic();
+                                                break;
+                                            }
+                                        case Atlas.NETWORKOBJTYPE.RIGIDBODY:
+                                            {
+                                                RigidbodyLogic();
+                                                break;
+                                            }
+                                        default:
+                                            {
+                                                Debug.LogWarning("Could not determine type for Network Identity");
+                                                break;
+                                            }
+                                    }
+
+                                    //reset timer
+                                    currentTime = 0.0f;
+                                }
+                                else
+                                {
+                                    Debug.LogWarning("Network Identity has incorrect bool config");
+                                }
                             }
                             else
                             {
-                                Debug.LogWarning("Network Identity has incorrect bool config");
+                                Debug.LogWarning("No Network Owner On Object: " + gameObject.name);
                             }
                         }
                         else
                         {
-                            Debug.LogWarning("No Network Owner On Object: " + gameObject.name);
+                            Debug.LogWarning("No Object Type ID On Object: " + gameObject.name);
+                            ObjectID = networkController.GetComponent<EZNetworking>().FixObjectID(gameObject);
                         }
                     }
                     else

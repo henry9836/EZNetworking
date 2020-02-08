@@ -22,11 +22,14 @@ public static class Atlas
     public const string packetObjectIDSeperator = "##";
     public const string packetObjectTypeSeperator = "$$";
     public const string packetObjectLocalAuthSeperator = "**";
-    public const string packetObjectDataStartMark = "[D_START]";
-    public const string packetObjectDataSeperator = "%%";
-    public const string packetObjectDataTerminator = "[D_END]";
+    public const string packetDataStartMark = "[D_START]";
+    public const string packetDataSeperator = "%%";
+    public const string packetDataTerminator = "[D_END]";
     public const string packetOwnerSeperator = "&&";
     public const string packetTerminator = "[P_END]";
+    public const string packetTargetIDSeperator = "++";
+    public const string packetForSrvSeperator = "SRVFLAG";
+    public const string commandDataSeperator = "\\\\";
 
     //Cut and extract a substring using two other substrings as markers
     public static string extractStr(string src, string start, string end)
@@ -94,6 +97,8 @@ public static class Atlas
         OBJECTSTATE,
         SPAWNOBJ,
         DISCONNECT,
+        COMMAND,
+        TARCOMMAND,
         BASIC,
         TRANSFORM,
         RIGIDBODY,
@@ -133,7 +138,7 @@ public static class Atlas
             lastHeartbeat = 0.0f;
         }
 
-        public int ID;
+        public int ID = -1;
         public AUTHTYPE authState;
         public byte[] lastMessage;
         public IPEndPoint clientEP;
