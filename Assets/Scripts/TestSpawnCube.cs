@@ -20,7 +20,7 @@ public class TestSpawnCube : MonoBehaviour
             cmdTimer += Time.deltaTime;
             if (cmdTimer > cmdThreshold)
             {
-                GetComponent<EZNetworking>().sendCommand(CommandHandler.COMMANDTYPE.TESTING, "Hello Networking", false, false);
+                //GetComponent<EZNetworking>().sendCommand(CommandHandler.COMMANDTYPE.TESTING, "Hello Networking", false, false);
                 GetComponent<EZNetworking>().sendCommand(CommandHandler.COMMANDTYPE.TESTING, "Hello Mr. Special", 1, false, false);
 
                 cmdThreshold = Random.Range(1.0f, 3.0f);

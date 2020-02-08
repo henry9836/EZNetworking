@@ -217,6 +217,8 @@ public class NetworkIdentity : MonoBehaviour
                             //Check if we know who owns us
                             if (ownerID >= 0)
                             {
+
+
                                 //Check for invalid or strange configs
                                 if ((Atlas.isClient && localPlayerAuthority && isOriginal) || (Atlas.isServer && !serverOnlyObject))
                                 {

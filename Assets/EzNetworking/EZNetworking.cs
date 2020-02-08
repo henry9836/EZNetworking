@@ -406,6 +406,7 @@ public class EZNetworking : MonoBehaviour
                     {
                         //Send back a ACK with the client's ID
                         string ACK = "ACK:" + NextNetID.ToString();
+                        client.ID = NextNetID;
                         NextNetID++;
                         SafeSend(Atlas.PACKETTYPE.ACK, Encoding.ASCII.GetBytes(ACK), client.clientEP, false);
                         client.authState = Atlas.ClientObject.AUTHTYPE.HANDSHAKE_SUCCEED;
@@ -1031,12 +1032,15 @@ public class EZNetworking : MonoBehaviour
                 //pass it onto target (and not zero as that is the server)
                 else if (pendingCommands[i].target > 0)
                 {
+                    Debug.LogWarning("Server is attepting to send a command to a target...");
                     //Find and send to client
                     for (int j = 0; j < clients.Count; j++)
                     {
+                        Debug.LogWarning("Looking at client{" + clients[j].ID + "} if target{" + pendingCommands[i].target + "}");
                         //Found match
                         if (clients[j].ID == pendingCommands[i].target)
                         {
+                            Debug.LogWarning("Found target client");
                             //Build packet
                             string packet = Atlas.packetSafeSendSeperator + (Convert.ToInt32(pendingCommands[i].safeSend)).ToString() + Atlas.packetDataStartMark + pendingCommands[i].data + Atlas.packetDataTerminator + Atlas.packetTerminator;
 

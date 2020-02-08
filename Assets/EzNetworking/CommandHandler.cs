@@ -13,7 +13,9 @@ public class CommandHandler : MonoBehaviour
 
     public void runCommand(COMMANDTYPE cmdType, string[] data)
     {
-        Debug.LogError("Running command1: " + data[0]);
+
+        Debug.LogWarning("runCommand Called");
+
         switch (cmdType)
         {
             case COMMANDTYPE.TESTING:

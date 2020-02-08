@@ -138,7 +138,7 @@ public static class Atlas
             lastHeartbeat = 0.0f;
         }
 
-        public int ID;
+        public int ID = -1;
         public AUTHTYPE authState;
         public byte[] lastMessage;
         public IPEndPoint clientEP;
