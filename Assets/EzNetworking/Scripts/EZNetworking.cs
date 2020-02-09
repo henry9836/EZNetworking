@@ -331,7 +331,6 @@ public class EZNetworking : MonoBehaviour
     //Timeout Thread
     private void TimeoutThread()
     {
-        Debug.Log("Timeout Thread Started");
         Thread.Sleep(timeoutThreshold);
         timeOutHandShake = true;
         return;

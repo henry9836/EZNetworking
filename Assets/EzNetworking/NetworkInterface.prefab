@@ -14,7 +14,7 @@ GameObject:
   m_Layer: 0
   m_Name: NetworkInterface
   m_TagString: Untagged
-  m_Icon: {fileID: 0}
+  m_Icon: {fileID: 2800000, guid: 996fb72421ac74e4d9f8a3fe8d45890c, type: 3}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
@@ -50,6 +50,7 @@ MonoBehaviour:
   port: 13371
   targetIP: 127.0.0.1
   spawnableObjects: []
+  debugPackets: 0
 --- !u!114 &7775677950612012468
 MonoBehaviour:
   m_ObjectHideFlags: 0
