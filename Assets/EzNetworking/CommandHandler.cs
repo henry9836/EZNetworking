@@ -13,16 +13,13 @@ public class CommandHandler : MonoBehaviour
 
     public void runCommand(COMMANDTYPE cmdType, string[] data)
     {
-
-        Debug.LogWarning("runCommand Called");
-
         switch (cmdType)
         {
             case COMMANDTYPE.TESTING:
                 {
                     for (int i = 0; i < data.Length - 1; i++)
                     {
-                        Debug.LogError("data["+i.ToString()+"] " + data[i]);
+                        Debug.Log("data["+i.ToString()+"] " + data[i]);
                     }
                     break;
                 }

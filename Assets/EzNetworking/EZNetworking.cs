@@ -1122,7 +1122,6 @@ public class EZNetworking : MonoBehaviour
             //Client Logic
             else
             {
-                Debug.LogError("Running command: " + dataStrArray[0]);
                 GetComponent<CommandHandler>().runCommand(type, dataStrArray);
             }
 
