@@ -12,6 +12,7 @@ public static class Atlas
     public static bool networkActive = false;
     public static bool networkAuthed = false;
     public static int ID = -1;
+    public static float clientHeartbeatTimer = 0.0f;
 
     private static int lastObjID = -5;
 
@@ -125,24 +126,24 @@ public static class Atlas
         {
             lastMessage = _lastMessage;
             clientEP = _clientEP;
-            lastHeartbeat = 0.0f;
+            heartbeatTimer = 0.0f;
         }
 
         //Helps identify a timeout
         public void life(){
-             lastHeartbeat += Time.deltaTime;
+            heartbeatTimer += Time.unscaledDeltaTime;
         }
 
         public void resetHeart()
         {
-            lastHeartbeat = 0.0f;
+            heartbeatTimer = 0.0f;
         }
 
         public int ID = -1;
         public AUTHTYPE authState;
         public byte[] lastMessage;
         public IPEndPoint clientEP;
-        public float lastHeartbeat = 0.0f;
+        public float heartbeatTimer = 0.0f;
     };
 
 }

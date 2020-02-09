@@ -110,8 +110,9 @@ public class EZNetworking : MonoBehaviour
     private bool timeOutHandShake = false;
     private int NextObjID = 1;
     private int NextNetID = 1;
+    private Thread mainNetworkThread;
 
-    
+
     public void sendCommand(CommandHandler.COMMANDTYPE cmdType, string data, bool safeSend, bool targetIsServer)
     {
         if (Atlas.isClient && Atlas.networkAuthed && Atlas.networkActive)
@@ -535,6 +536,9 @@ public class EZNetworking : MonoBehaviour
     private void clientReceiveThread(object state)
     {
         byte[] data = state as byte[];
+
+        //Reset timeout
+        Atlas.clientHeartbeatTimer = 0.0f;
 
         //Decode Data Type
         string dataStr = Encoding.ASCII.GetString(data);
@@ -1121,6 +1125,57 @@ public class EZNetworking : MonoBehaviour
         }
     }
 
+    void Heartbeat(NetworkIdentity[] objs)
+    {
+        if (Atlas.isServer)
+        {
+            //Server Timeout Logic
+            for (int i = 0; i < clients.Count; i++)
+            {
+                //Only timeout other people
+                if (clients[i].ID != Atlas.ID)
+                {
+                    clients[i].life();
+                    //If the client has timedout
+                    if (clients[i].heartbeatTimer > timeoutThreshold)
+                    {
+                        //Destory all objs owned by player
+                        for (int j = 0; j < objs.Length; j++)
+                        {
+                            if (objs[j].ownerID == clients[i].ID)
+                            {
+                                Destroy(objs[j]);
+                            }
+                        }
+                        //Remove Client Data
+                        clients.Remove(clients[i]);
+                    }
+                }
+            }
+        }
+        else if (Atlas.isClient){
+            //Client Timeout Logic
+            Atlas.clientHeartbeatTimer += Time.unscaledDeltaTime;
+
+            if (Atlas.clientHeartbeatTimer > timeoutThreshold)
+            {
+                //destory all objs and disconnect
+
+                for (int i = 0; i < objs.Length; i++)
+                {
+                    Destroy(objs[i]);
+                }
+
+                Atlas.isClient = false;
+                Atlas.networkActive = false;
+                Atlas.networkAuthed = false;
+
+                
+            }
+
+        }
+    }
+
     public void Start()
     {
         timeoutThreshold *= 1000; //convert from seconds to milliseconds
@@ -1139,6 +1194,7 @@ public class EZNetworking : MonoBehaviour
             WorkThroughObjQueue(objs);
             RemoveDupes(objs);
             WorkThroughCmdQueue();
+            Heartbeat(objs);
         }
     }
 }
