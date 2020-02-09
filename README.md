@@ -1,3 +1,4 @@
+![](https://raw.githubusercontent.com/henry9836/EZNetworking/master/Assets/EzNetworking/Icons/github.png)
 # EZNetworking
 #### Henry Oliver
 
@@ -14,3 +15,6 @@ To make a framework that can be intergrated with projects easily and work on mul
 - Object Rigidbody Synchronization 
 - Custom Lerping Object Transform Synchronization 
 - Object Transform Midgame Catchup
+- Sending Custom Commands To All Players
+- Sending Custom Commands To A Specific Target
+- Timeout Handling
