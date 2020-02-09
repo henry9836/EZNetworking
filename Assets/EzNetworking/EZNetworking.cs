@@ -113,6 +113,37 @@ public class EZNetworking : MonoBehaviour
     private int NextNetID = 1;
     private Thread mainNetworkThread;
 
+    public void Disconnect()
+    {
+
+        if (Atlas.isServer)
+        {
+            //Build a list of current gameobjects
+            NetworkIdentity[] objs = GameObject.FindObjectsOfType<NetworkIdentity>();
+
+            Atlas.isServer = false;
+            Atlas.networkActive = false;
+            Atlas.networkAuthed = false;
+
+            mainNetworkThread.Abort();
+
+            for (int i = 0; i < objs.Length; i++)
+            {
+                Destroy(objs[i]);
+            }
+
+        }
+
+        if (Atlas.isClient)
+        {
+
+            Atlas.isClient = false;
+            Atlas.networkActive = false;
+            Atlas.networkAuthed = false;
+
+            mainNetworkThread.Abort();
+        }
+    }
 
     public void sendCommand(CommandHandler.COMMANDTYPE cmdType, string data, bool safeSend, bool targetIsServer)
     {
@@ -354,6 +385,10 @@ public class EZNetworking : MonoBehaviour
     //Server Process Incoming Data
     private void serverReceiveThread(object state)
     {
+        if (!Atlas.networkActive) {
+            Debug.LogWarning("Attempted to process data while network was not active, ignoring");
+        }
+
         Atlas.ClientObject client = state as Atlas.ClientObject;
         byte[] data = client.lastMessage;
         //Have we seen this client before?
@@ -536,6 +571,12 @@ public class EZNetworking : MonoBehaviour
     //Client Process Incoming Data
     private void clientReceiveThread(object state)
     {
+
+        if (!Atlas.networkActive)
+        {
+            Debug.LogWarning("Attempted to process data while network was not active, ignoring");
+        }
+
         byte[] data = state as byte[];
 
         //Reset timeout
@@ -716,8 +757,9 @@ public class EZNetworking : MonoBehaviour
         network.Connect(listenPoint);
 
         //Start Client Receive Thread
-        Thread clientR = new Thread(clientMainReieveThread);
-        clientR.Start();
+        //Thread clientR = new Thread(clientMainReieveThread);
+        mainNetworkThread = new Thread(clientMainReieveThread);
+        mainNetworkThread.Start();
 
         //Attempt Handshake
         ClientHandShake();
@@ -738,8 +780,9 @@ public class EZNetworking : MonoBehaviour
         network = new UdpClient(port);
 
         //Start Client Receive Thread
-        Thread serverR = new Thread(serverMainReceiveThread);
-        serverR.Start();
+        //Thread serverR = new Thread(serverMainReceiveThread);
+        mainNetworkThread = new Thread(serverMainReceiveThread);
+        mainNetworkThread.Start();
     }
 
     // **************************************
@@ -820,7 +863,6 @@ public class EZNetworking : MonoBehaviour
             //If Object Doesn't Exist
             if (indexOfObj < 0)
             {
-                Debug.LogWarning("Object with an Type of: " + pendingWorkItems[i].objType + " doesn't exist spawning new obj");
 
                 switch (pendingWorkItems[i].workType)
                 {
@@ -1037,15 +1079,12 @@ public class EZNetworking : MonoBehaviour
                 //pass it onto target (and not zero as that is the server)
                 else if (pendingCommands[i].target > 0)
                 {
-                    Debug.LogWarning("Server is attepting to send a command to a target...");
                     //Find and send to client
                     for (int j = 0; j < clients.Count; j++)
                     {
-                        Debug.LogWarning("Looking at client{" + clients[j].ID + "} if target{" + pendingCommands[i].target + "}");
                         //Found match
                         if (clients[j].ID == pendingCommands[i].target)
                         {
-                            Debug.LogWarning("Found target client");
                             //Build packet
                             string packet = Atlas.packetSafeSendSeperator + (Convert.ToInt32(pendingCommands[i].safeSend)).ToString() + Atlas.packetDataStartMark + pendingCommands[i].data + Atlas.packetDataTerminator + Atlas.packetTerminator;
 
@@ -1133,23 +1172,30 @@ public class EZNetworking : MonoBehaviour
             //Server Timeout Logic
             for (int i = 0; i < clients.Count; i++)
             {
+                Debug.LogWarning("HB LP");
                 //Only timeout other people
                 if (clients[i].ID != Atlas.ID)
                 {
                     clients[i].life();
+
+                    Debug.LogWarning("HB[" + clients[i].ID + "] = " + clients[i].heartbeatTimer + " Threshold is: " + timeoutThreshold);
+
                     //If the client has timedout
-                    if (clients[i].heartbeatTimer > timeoutThreshold)
+                    if (clients[i].heartbeatTimer > (timeoutThreshold/1000))
                     {
+                        Debug.LogWarning("WE HAVE HIT THRESHOLD!");
+
                         //Destory all objs owned by player
                         for (int j = 0; j < objs.Length; j++)
                         {
                             if (objs[j].ownerID == clients[i].ID)
                             {
-                                Destroy(objs[j]);
+                                Destroy(objs[j].gameObject);
                             }
                         }
                         //Remove Client Data
                         clients.Remove(clients[i]);
+                        Debug.LogWarning("ALL DONE!");
                     }
                 }
             }
@@ -1158,20 +1204,16 @@ public class EZNetworking : MonoBehaviour
             //Client Timeout Logic
             Atlas.clientHeartbeatTimer += Time.unscaledDeltaTime;
 
-            if (Atlas.clientHeartbeatTimer > timeoutThreshold)
+            if (Atlas.clientHeartbeatTimer > (timeoutThreshold / 1000))
             {
                 //destory all objs and disconnect
 
                 for (int i = 0; i < objs.Length; i++)
                 {
-                    Destroy(objs[i]);
+                    Destroy(objs[i].gameObject);
                 }
 
-                Atlas.isClient = false;
-                Atlas.networkActive = false;
-                Atlas.networkAuthed = false;
-
-                
+                Disconnect();
             }
 
         }
