@@ -61,7 +61,6 @@ public class MoveAroundScriptTest : MonoBehaviour
 
             yield return new WaitForSecondsRealtime(Random.Range(0.5f, 3.0f));
         }
-        yield return null;
     }
 
 }
