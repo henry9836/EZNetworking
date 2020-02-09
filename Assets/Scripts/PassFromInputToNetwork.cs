@@ -7,6 +7,7 @@ public class PassFromInputToNetwork : MonoBehaviour
 {
 
     public EZNetworking networkController;
+
     public void PassOn()
     {
         networkController.AssignIP(GetComponent<Text>().text);
