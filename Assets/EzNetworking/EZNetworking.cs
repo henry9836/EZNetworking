@@ -342,8 +342,10 @@ public class EZNetworking : MonoBehaviour
     {
         for (int i = 0; i < maxRetryCount; i++)
         {
-            Debug.Log("Attempting Handshake. Attempt: " + i.ToString());
-
+            if (debugPackets)
+            {
+                Debug.Log("Attempting Handshake. Attempt: " + i.ToString());
+            }
             //Setup Timeout
 
             timeOutHandShake = false;
@@ -363,7 +365,10 @@ public class EZNetworking : MonoBehaviour
             if (!timeOutHandShake)
             {
                 timeoutThread.Abort();
-                Debug.Log("Handshake Completed");
+                if (debugPackets)
+                {
+                    Debug.Log("Handshake Completed");
+                }
                 
                 //Request Game Infomation From Server
                 SafeSend(Atlas.PACKETTYPE.REQALLGAMEINFO, Encoding.ASCII.GetBytes("SENDGAMEINFO"), listenPoint, false);
@@ -454,7 +459,6 @@ public class EZNetworking : MonoBehaviour
                         //Get Temporary ID
                         int oldID = int.Parse(infoStr);
                         int newID = AssignID(null, -1);
-                        Debug.Log("OLD ID: " + oldID.ToString() + " NEW ID: " + newID.ToString());
                         SafeSend(Atlas.PACKETTYPE.NEWOBJID, Encoding.ASCII.GetBytes(oldID.ToString() +"$" + newID.ToString()), client.clientEP, false);
                         break;
                     }
@@ -470,7 +474,10 @@ public class EZNetworking : MonoBehaviour
                         int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
 
                         //Debugging
-                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " +  safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data["+objData+"]");
+                        if (debugPackets)
+                        {
+                            Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
+                        }
 
                         //If it is our ID ignore
                         if (Atlas.ID == senderID)
@@ -496,7 +503,10 @@ public class EZNetworking : MonoBehaviour
                         int objOwnerID = int.Parse(Atlas.extractStr(infoStr, Atlas.packetOwnerSeperator, Atlas.packetTerminator));
 
                         //Debugging
-                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
+                        if (debugPackets)
+                        {
+                            Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
+                        }
 
                         //If it is our ID ignore
                         if (Atlas.ID == senderID)
@@ -584,7 +594,6 @@ public class EZNetworking : MonoBehaviour
 
         //Decode Data Type
         string dataStr = Encoding.ASCII.GetString(data);
-        Debug.Log("Client Received: " + dataStr);
 
         int cutPosition = dataStr.IndexOf(Atlas.packetTypeSeperator);
 
@@ -593,7 +602,10 @@ public class EZNetworking : MonoBehaviour
             int type = int.Parse(dataStr.Substring(0, cutPosition));
             string infoStr = dataStr.Substring(cutPosition + Atlas.packetTypeSeperator.Length);
 
-            Debug.Log("Packet: type{" + type.ToString() + "} infomation: " + infoStr);
+            if (debugPackets)
+            {
+                Debug.Log("Packet: type{" + type.ToString() + "} infomation: " + infoStr);
+            }
 
             switch (type)
             {
@@ -607,7 +619,6 @@ public class EZNetworking : MonoBehaviour
                         if (Atlas.ID > 0)
                         {
                             Atlas.networkAuthed = true;
-                            Debug.Log("Client ID: " + Atlas.ID.ToString());
                         }
 
                         break;
@@ -616,7 +627,6 @@ public class EZNetworking : MonoBehaviour
                     {
                         //Get The Old and New ID
                         int newPos = infoStr.IndexOf("$");
-                        Debug.Log(infoStr.Substring(0, newPos));
                         int oldID = int.Parse(infoStr.Substring(0, newPos));
                         int newID = int.Parse(infoStr.Substring(newPos + 1));
 
@@ -648,8 +658,10 @@ public class EZNetworking : MonoBehaviour
                             return;
                         }
 
-                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
-
+                        if (debugPackets)
+                        {
+                            Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
+                        }
 
                         //If safesend tell server we got it
 
@@ -677,7 +689,10 @@ public class EZNetworking : MonoBehaviour
                         }
 
                         //If safesend tell server we got it
-                        Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
+                        if (debugPackets)
+                        {
+                            Debug.Log("SENDER ID: " + senderID.ToString() + " OWNER ID: " + objOwnerID.ToString() + " SAFE SEND: " + safeSendFlag + " AUTH: " + localAuth + " OBJID: " + objID + " OBJTYPE: " + objType + " data[" + objData + "]");
+                        }
 
                         //Queue Work
                         pendingWorkItems.Add(new PendingWorkItem(safeSendFlag, localAuth, senderID, objID, objType, objData, objOwnerID, PendingWorkItem.WorkType.RIGIDBODYUPDATE));
